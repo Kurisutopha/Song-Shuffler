@@ -1,0 +1,7 @@
+edu/brown/cs/student/main/server/storage/FirebaseUtilities.class
+edu/brown/cs/student/main/server/storage/StorageInterface.class
+edu/brown/cs/student/main/server/handlers/ClearUserHandler.class
+edu/brown/cs/student/main/server/handlers/AddWordHandler.class
+edu/brown/cs/student/main/server/handlers/ListWordsHandler.class
+edu/brown/cs/student/main/server/Server.class
+edu/brown/cs/student/main/server/handlers/Utils.class
