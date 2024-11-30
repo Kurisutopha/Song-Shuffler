@@ -1,8 +1,6 @@
 import "../styles/App.css";
 
 function App() {
-  console.log("App is rendering"); // Add this line to check if component is mounting
-
   return (
     <div className="App">
       <div className="app">
@@ -10,6 +8,11 @@ function App() {
         <button className="start-button">
           Start
         </button>
+        <p className="rules">
+          Rules of the game: Press start and select a genre of music, the game will play a snippet 
+          of a random song 10 times. Guess the songs to win a point and link your spotify to add 
+          them to your playlists!
+        </p>
       </div>
     </div>
   );
