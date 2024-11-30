@@ -1,11 +1,19 @@
 import "../styles/App.css";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import GenreSelect from "./SelectGenera";
 
-function App() {
+function Home() {
+  const navigate = useNavigate();
+
+  const handleStart = () => {
+    navigate('/select-genre');
+  };
+
   return (
     <div className="App">
       <div className="app">
         <h1 className="title">Welcome to Chime In</h1>
-        <button className="start-button">
+        <button className="start-button" onClick={handleStart}>
           Start
         </button>
         <p className="rules">
@@ -15,6 +23,17 @@ function App() {
         </p>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/select-genre" element={<GenreSelect />} />
+      </Routes>
+    </Router>
   );
 }
 
