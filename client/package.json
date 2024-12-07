@@ -15,7 +15,7 @@
     "@clerk/clerk-react": "^5.15.1",
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
-    "dotenv": "^16.4.4",
+    "dotenv": "^16.4.7",
     "firebase": "^10.14.1",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.454.0",
