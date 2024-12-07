@@ -1,65 +1,45 @@
-import { initializeApp } from "firebase/app";
 import "../styles/App.css";
-import MapsGearup from "./MapsGearup";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignOutButton,
-  UserButton,
-} from "@clerk/clerk-react";
-import { useState, useEffect } from "react";
-import { overlayData } from "../utils/overlay";
-// import {ProvidenceLatLong.long } from "mapbox-gl"
-
-// REMEMBER TO PUT YOUR API KEY IN A FOLDER THAT IS GITIGNORED!!
-// (for instance, /src/private/api_key.tsx)
-// import {API_KEY} from "./private/api_key"
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import GenreSelect from "./SelectGenre";
 
 
+function Home() {
+ const navigate = useNavigate();
 
-const firebaseConfig = {
-  apiKey: process.env.API_KEY,
-  authDomain: process.env.AUTH_DOMAIN,
-  projectId: process.env.PROJECT_ID,
-  storageBucket: process.env.STORAGE_BUCKET,
-  messagingSenderId: process.env.MESSAGING_SENDER_ID,
-  appId: process.env.APP_ID,
-};
 
-initializeApp(firebaseConfig);
+ const handleStart = () => {
+   navigate('/select-genre');
+ };
+
+
+ return (
+   <div className="App">
+     <div className="app">
+       <h1 className="title">Welcome to Chime In</h1>
+       <button className="start-button" onClick={handleStart}>
+         Start
+       </button>
+       <p className="rules">
+         Rules of the game: Press start and select a genre of music, the game will play a snippet
+         of a random song 10 times. Guess the songs to win a point and link your spotify to add
+         them to your playlists!
+       </p>
+     </div>
+   </div>
+ );
+}
+
 
 function App() {
-  return (
-    <div className="App">
-      <SignedOut>
-        <SignInButton />
-      </SignedOut>
-      <SignedIn>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              justifyContent: "center",
-              alignContent: "center",
-              padding: "10px",
-              gap: "10px",
-            }}
-          >
-            <SignOutButton />
-            <UserButton />
-          </div>
-          <MapsGearup />
-        </div>
-      </SignedIn>
-    </div>
-  );
+ return (
+   <Router>
+     <Routes>
+       <Route path="/" element={<Home />} />
+       <Route path="/select-genre" element={<GenreSelect />} />
+     </Routes>
+   </Router>
+ );
 }
+
 
 export default App;
