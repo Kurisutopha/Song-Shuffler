@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { SpotifySongsDataSource } from './SpotifySongsDataSource';
 dotenv.config()
 
-class SpotifyHandler {
+export class SpotifyHandler {
     private spotifyApi: SpotifyWebApi;
     private tokenExpirationTime: number = 0;
     private songsDatasource: SpotifySongsDataSource;
