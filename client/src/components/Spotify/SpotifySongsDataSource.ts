@@ -16,13 +16,9 @@ export class SpotifySongsDataSource {
      * @param count - Number of random songs to select.
      * @returns An array of random song objects.
      */
-    async chooseRandomSongs(playlistId: string, count: number): Promise<SpotifyApi.TrackObjectFull[]> {
+    async chooseRandomSongs(tracks: SpotifyApi.TrackObjectFull[], count: number): Promise<SpotifyApi.TrackObjectFull[]> {
         
         try {
-            const playlistData = await this.spotifyApi.getPlaylistTracks(playlistId);
-            const tracks = playlistData.body.items
-            .map(item => item.track) // Extract the track
-            .filter((track): track is SpotifyApi.TrackObjectFull => track !== null && track.id !== undefined); // Null check and type guard
             
             // Filter out songs already chosen 
                 const unchosenTracks = tracks.filter(track =>  !this.chosenSongsSet.has(track.id));
