@@ -1,29 +1,134 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "../styles/App.css";
 
-function SelectGenre() {
-  const fetchSongs = async (genre: string) => {
+const APIController = {
+  clientId: '177ead92a8e945a8a5803f19edd3db14',
+  clientSecret: '279ea60b873a40a081ad542b519c577f',
+
+  async getToken() {
     try {
-      const response = await fetch('http://localhost:8000/api/songs?genre=${genre}');
-      if (!response.ok){
-        throw new Error("Failed to fetch songs");
-      }
-      const songs = await response.json();
-      console.log("Fetched songs: ", songs);
-    
-    } catch (error){
-      console.error("Error fetching songs: ", error);
+      const result = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded', 
+          'Authorization': 'Basic ' + btoa(`${this.clientId}:${this.clientSecret}`)
+        },
+        body: 'grant_type=client_credentials'
+      });
+
+      const data = await result.json();
+      return data.access_token;
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return null;
+    }
+  },
+
+  async getGenres(token: string) {
+    try {
+      const result = await fetch('https://api.spotify.com/v1/browse/categories?locale=sv_US', {
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      const data = await result.json();
+      return data.categories.items;
+    } catch (error) {
+      console.error('Error fetching genres:', error);
+      return [];
+    }
+  },
+
+  async getPlaylistByGenre(token: string, genreId: string) {
+    try {
+      const limit = 10;
+      console.log(token);
+      const result = await fetch(`https://api.spotify.com/v1/search?q=genre%3A${genreId}&type=playlist&limit=${limit}`, {
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      console.log(result);
+
+      const data = await result.json();
+      return data.playlists.items;
+    } catch (error) {
+      console.error('Error fetching playlists:', error);
+      return [];
+    }
+  },
+
+  async getTracksFromPlaylist(token: string, playlistId: string) {
+    try {
+      const result = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      const data = await result.json();
+      return data.items;
+    } catch (error) {
+      console.error('Error fetching tracks:', error);
+      return [];
     }
   }
+};
+
+function SelectGenre() {
+  const [genres, setGenres] = useState([]);
+  const [token, setToken] = useState<string | null>(null);
+  const [playlists, setPlaylists] = useState([]);
+  const [tracks, setTracks] = useState([]);
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const fetchedToken = await APIController.getToken();
+        if (fetchedToken) {
+          setToken(fetchedToken);
+          const fetchedGenres = await APIController.getGenres(fetchedToken);
+          setGenres(fetchedGenres);
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  const handleGenreSelect = async (genreId: string) => {
+    if (!token) return;
+
+    try {
+      const fetchedPlaylists = await APIController.getPlaylistByGenre(token, genreId);
+
+      setPlaylists(fetchedPlaylists);
+
+      // If playlists exist, fetch tracks from the first playlist
+      if (fetchedPlaylists.length > 0) {
+        const fetchedTracks = await APIController.getTracksFromPlaylist(token, fetchedPlaylists[0].id);
+        setTracks(fetchedTracks);
+        console.log(fetchedTracks);
+      }
+    } catch (error) {
+      console.error('Error selecting genre:', error);
+    }
+  };
+
   return (
     <div className="App">
       <div className="app">
         <h1 className="title">Select a Genre</h1>
         <div className="genre-buttons">
-          <button className="genre-button" onClick={() => fetchSongs("rock")}>Rock</button>
-          <button className="genre-button" onClick={() => fetchSongs("pop")}>Pop</button>
-          <button className="genre-button" onClick={() => fetchSongs("edm")}>EDM</button>
-          <button className="genre-button" onClick={() => fetchSongs("reggaeton")}>Reggaeton</button>
+          {['Rock', 'Pop', 'edm', 'Classical'].map((genre) => (
+            <button
+              key={genre}
+              className="genre-button"
+              onClick={() => handleGenreSelect(genre)}
+            >
+              {genre.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
     </div>
