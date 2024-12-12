@@ -4,10 +4,12 @@ import com.squareup.moshi.Moshi;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +17,15 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 public class GameController {
 
+  private final WebSocketEventListener webSocketEventListener;
+
   private final SimpMessagingTemplate messagingTemplate;
-  private final Map<String, Integer> scores = new ConcurrentHashMap<>();
+  private final GameService gameService;
+  private final Map<String, Integer> playerScores = new ConcurrentHashMap<>();
+  private final Set<String> submittedPlayers = ConcurrentHashMap.newKeySet();
+
+  //  private final Set<String> readyPlayers = ConcurrentHashMap.newKeySet();
+  private Set<String> activePlayers = ConcurrentHashMap.newKeySet();
 
   private List<Question> questions =
       List.of(
@@ -32,31 +41,66 @@ public class GameController {
 
   private int currentQuestionIndex = 0;
   private final Moshi moshi = new Moshi.Builder().build();
+  private boolean gameStarted = false;
 
   @Autowired
-  public GameController(SimpMessagingTemplate messagingTemplate) {
+  public GameController(
+      SimpMessagingTemplate messagingTemplate,
+      WebSocketEventListener webSocketEventListener,
+      GameService gameService) {
     this.messagingTemplate = messagingTemplate;
+    this.webSocketEventListener = webSocketEventListener;
+    this.gameService = gameService;
+  }
+
+  public void removeReadyPlayer(String playerId) {
+    gameService.removeReadyPlayer(playerId);
+
+    // Broadcast updated ready players count
+    Map<String, Object> readyMessage = new HashMap<>();
+    readyMessage.put("type", "PLAYERS_READY");
+    readyMessage.put("readyCount", gameService.getReadyPlayers().size());
+
+    messagingTemplate.convertAndSend("/topic/game", new GameMessage("PLAYERS_READY", readyMessage));
   }
 
   @MessageMapping("/start")
   @SendTo("/topic/game")
   public GameMessage startGame() {
-    if (currentQuestionIndex < questions.size()) {
-      Question question = questions.get(currentQuestionIndex);
+    if (!gameService.getReadyPlayers().isEmpty()
+        && gameService.getReadyPlayers().size() == getActivePlayerCount()) {
+      // Reset game state
+      currentQuestionIndex = 0;
+      playerScores.clear();
+      submittedPlayers.clear();
+      activePlayers.clear();
+      gameStarted = true;
 
-      Map<String, Object> questionMessage = new HashMap<>();
-      questionMessage.put("type", "QUESTION");
-      questionMessage.put("questionText", question.getQuestionText());
-      questionMessage.put("options", question.getOptions());
+      if (currentQuestionIndex < questions.size()) {
+        Question question = questions.get(currentQuestionIndex);
 
-      currentQuestionIndex++;
-      return new GameMessage("QUESTION", questionMessage);
+        Map<String, Object> questionMessage = new HashMap<>();
+        questionMessage.put("type", "QUESTION");
+        questionMessage.put("questionText", question.getQuestionText());
+        questionMessage.put("options", question.getOptions());
+
+        currentQuestionIndex++;
+        return new GameMessage("QUESTION", questionMessage);
+      } else {
+        Map<String, Object> gameOverMessage = new HashMap<>();
+        gameOverMessage.put("type", "GAME_OVER");
+        gameOverMessage.put("finalScores", playerScores);
+
+        return new GameMessage("GAME_OVER", gameOverMessage);
+      }
     } else {
-      Map<String, Object> gameOverMessage = new HashMap<>();
-      gameOverMessage.put("type", "GAME_OVER");
-      gameOverMessage.put("finalScores", scores);
+      // Not enough players ready
+      Map<String, Object> waitingMessage = new HashMap<>();
+      waitingMessage.put("type", "WAITING_FOR_PLAYERS");
+      waitingMessage.put("readyCount", gameService.getReadyPlayers().size());
+      waitingMessage.put("totalPlayers", getActivePlayerCount());
 
-      return new GameMessage("GAME_OVER", gameOverMessage);
+      return new GameMessage("WAITING_FOR_PLAYERS", waitingMessage);
     }
   }
 
@@ -66,23 +110,88 @@ public class GameController {
     String answer = submission.getAnswer();
 
     if (playerId != null && answer != null) {
+      submittedPlayers.add(playerId);
+
       Question currentQuestion = questions.get(currentQuestionIndex - 1);
       if (currentQuestion.getCorrectAnswer().equals(answer)) {
-        scores.put(playerId, scores.getOrDefault(playerId, 0) + 10);
+        playerScores.put(playerId, playerScores.getOrDefault(playerId, 0) + 10);
 
         Map<String, Object> scoreMessage = new HashMap<>();
         scoreMessage.put("type", "SCORE_UPDATE");
         scoreMessage.put("playerId", playerId);
-        scoreMessage.put("score", scores.get(playerId));
+        scoreMessage.put("score", playerScores.get(playerId));
 
         // Broadcast score update to all clients
         messagingTemplate.convertAndSend(
             "/topic/game", new GameMessage("SCORE_UPDATE", scoreMessage));
       }
+      if (submittedPlayers.size() >= getActivePlayerCount()) {
+        // Move to next question
+        sendNextQuestion();
+      }
     }
   }
 
-  // Supporting classes for STOMP messaging
+  @MessageMapping("/player-ready")
+  @SendTo("/topic/game")
+  public GameMessage playerReady(
+      PlayerReadySubmission submission, SimpMessageHeaderAccessor headerAccessor) {
+    String playerId = submission.getPlayerId();
+    String sessionId = headerAccessor.getSessionId();
+
+    // Get the session ID associated with this WebSocket connection
+
+    System.out.println("Received player ready request for playerId: " + playerId);
+
+    if (playerId != null) {
+      gameService.addReadyPlayer(playerId);
+
+      webSocketEventListener.registerPlayerSession(sessionId, playerId);
+      gameService.addReadyPlayer(playerId);
+
+      // Broadcast current ready players count
+      Map<String, Object> readyMessage = new HashMap<>();
+      readyMessage.put("type", "PLAYERS_READY");
+      readyMessage.put("readyCount", gameService.getReadyPlayers().size());
+
+      return new GameMessage("PLAYERS_READY", readyMessage);
+    }
+
+    return null;
+  }
+
+  private void sendNextQuestion() {
+    submittedPlayers.clear();
+
+    if (currentQuestionIndex < questions.size()) {
+
+      Question question = questions.get(currentQuestionIndex);
+
+      Map<String, Object> questionMessage = new HashMap<>();
+      questionMessage.put("type", "QUESTION");
+      questionMessage.put("questionText", question.getQuestionText());
+      questionMessage.put("options", question.getOptions());
+
+      messagingTemplate.convertAndSend("/topic/game", new GameMessage("QUESTION", questionMessage));
+      currentQuestionIndex++;
+
+    } else {
+      // If there are no more questions, end the game
+      Map<String, Object> gameOverMessage = new HashMap<>();
+      gameOverMessage.put("type", "GAME_OVER");
+      gameOverMessage.put("finalScores", playerScores);
+
+      messagingTemplate.convertAndSend(
+          "/topic/game", new GameMessage("GAME_OVER", gameOverMessage));
+    }
+  }
+
+  private int getActivePlayerCount() {
+    // In a real-world scenario, you might want to track active players more robustly
+    // This is a simple placeholder that assumes all players who have joined are active
+    return this.webSocketEventListener.getActiveSessions().size();
+  } // Supporting classes for STOMP messaging
+
   public static class GameMessage {
     private String type;
     private Object payload;
@@ -109,6 +218,18 @@ public class GameController {
 
     public void setPayload(Object payload) {
       this.payload = payload;
+    }
+  }
+
+  public static class PlayerReadySubmission {
+    private String playerId;
+
+    public String getPlayerId() {
+      return playerId;
+    }
+
+    public void setPlayerId(String playerId) {
+      this.playerId = playerId;
     }
   }
 
