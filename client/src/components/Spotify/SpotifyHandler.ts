@@ -1,7 +1,7 @@
 import SpotifyWebApi from 'spotify-web-api-node';
 import dotenv from 'dotenv';
 import { SpotifySongsDataSource } from './SpotifySongsDataSource';
-dotenv.config()
+//dotenv.config()
 
 export class SpotifyHandler {
     private spotifyApi: SpotifyWebApi;
@@ -32,6 +32,27 @@ export class SpotifyHandler {
         return this.spotifyApi.getAvailableGenreSeeds();
     }
 
+    async getPlaylistByGenre(token: string, genreId: string) {
+        try {
+          const limit = 10;
+          console.log(token);
+          //const result = await fetch('https://api.spotify.com/v1/recommendations?seed_genres=${genreId}')
+          const result = await fetch(`https://api.spotify.com/v1/search?q=genre%3A${genreId}&type=track&limit=10`, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          console.log(result);
+    
+          const data = await result.json();
+          console.log(data)
+          //return data.playlists.items;
+          return data.tracks.items;
+        } catch (error) {
+          console.error('Error fetching playlists:', error);
+          return [];
+        }
+      }
+
     async getPopularSongsByGenre(genre: string, count: number, difficulty: number) {
         await this.initializeToken();
         const recommendations = await this.spotifyApi.getRecommendations({
@@ -59,6 +80,7 @@ export class SpotifyHandler {
 
             //Get random songs from the recommendations
             const randomSongs = await this.songsDatasource.chooseRandomSongs(tracks, count);
+            console.log(randomSongs);
             return randomSongs;
     }
 }

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "../styles/App.css";
+import { SpotifyHandler } from "./Spotify/SpotifyHandler";
+import { SpotifySongsDataSource } from "./Spotify/SpotifySongsDataSource";
+import SpotifyWebApi from "spotify-web-api-node";
 
 const APIController = {
   clientId: '177ead92a8e945a8a5803f19edd3db14',
@@ -74,6 +77,54 @@ const APIController = {
 };
 
 function SelectGenre() {
+  const [popularSongs, setPopularSongs] = useState<SpotifyApi.TrackObjectFull[]>([]);
+  const [token, setToken] = useState<string | null>(null);
+  const [genres, setGenres] = useState([]);
+
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const fetchedToken = await APIController.getToken();
+        if (fetchedToken) {
+          setToken(fetchedToken);
+          const fetchedGenres = await APIController.getGenres(fetchedToken);
+          setGenres(fetchedGenres);
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+  const spotifyApi = new SpotifyWebApi({
+    clientId: process.env.SPOTIFY_CLIENT_ID,
+    clientSecret: process.env.SPOTIFY_CLIENT_SECRET
+  });
+  const songsDatasource = new SpotifySongsDataSource(spotifyApi);
+  const spotifyHandler = new SpotifyHandler(songsDatasource);
+
+  const handleGenreSelect = async (genre: string) => {
+    if (!token) return;
+    try {
+      // Fetch popular songs for the selected genre
+      // The count parameter determines how many songs to retrieve
+      // The difficulty parameter affects song popularity (lower = less popular songs)
+      //const songs = await spotifyHandler.getPopularSongsByGenre(genre.toLowerCase(), 5, 70);
+      const songs = await spotifyHandler.getPlaylistByGenre(token, genre)
+      
+      // Update state with the retrieved songs
+      setPopularSongs(songs);
+
+      // Log songs to console
+      console.log(`Popular ${genre} Songs:`, songs);
+    } catch (error) {
+      console.error(`Error fetching ${genre} songs:`, error);
+    }
+
+  }
+  /*
   const [genres, setGenres] = useState([]);
   const [token, setToken] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState([]);
@@ -101,9 +152,8 @@ function SelectGenre() {
 
     try {
       const fetchedPlaylists = await APIController.getPlaylistByGenre(token, genreId);
-
+      console.log(fetchedPlaylists)
       setPlaylists(fetchedPlaylists);
-
       // If playlists exist, fetch tracks from the first playlist
       if (fetchedPlaylists.length > 0) {
         const fetchedTracks = await APIController.getTracksFromPlaylist(token, fetchedPlaylists[0].id);
@@ -113,14 +163,14 @@ function SelectGenre() {
     } catch (error) {
       console.error('Error selecting genre:', error);
     }
-  };
+  };*/
 
   return (
     <div className="App">
       <div className="app">
         <h1 className="title">Select a Genre</h1>
         <div className="genre-buttons">
-          {['Rock', 'Pop', 'edm', 'Classical'].map((genre) => (
+          {['rock', 'pop', 'edm', 'classical'].map((genre) => (
             <button
               key={genre}
               className="genre-button"
