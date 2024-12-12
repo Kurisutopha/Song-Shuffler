@@ -30,8 +30,8 @@ CP=$(cat .mvn-classpath)
 # in naming.  You'll have to call your class "Server" and use our
 # recommended package structure.
 
-# Find Server.java. It should be in a package below your username package.
-MAIN=$(ls src/main/java/edu/brown/cs/*/*/server/Server.java)
+# Find GameController.java. It should be in a package below your username package.
+MAIN=$(ls src/main/java/edu/brown/cs/*/*/server/GameController.java)
 [ -z "$MAIN" ] && echo "You need a Server.java" && exit 1
 [ ! -e "$MAIN" ] && echo "You can only have one Server.java" && exit 1
 

@@ -22,8 +22,10 @@ export default defineConfig(({ mode }) => {
       "process.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
         env.VITE_CLERK_PUBLISHABLE_KEY
       ),
+      global: "window"
     },
     plugins: [react()],
+    
     server: {
       port: 8000,
     },
