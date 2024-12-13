@@ -1,6 +1,6 @@
 import "../styles/App.css";
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
-import GenreSelect from "./SelectGenre";
+import GenreSearch from './GenreSearch';
 
 
 function Home() {
@@ -35,7 +35,7 @@ function App() {
    <Router>
      <Routes>
        <Route path="/" element={<Home />} />
-       <Route path="/select-genre" element={<GenreSelect />} />
+       <Route path="/select-genre" element={<GenreSearch />} />
      </Routes>
    </Router>
  );

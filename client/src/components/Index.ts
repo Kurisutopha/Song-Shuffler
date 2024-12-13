@@ -22,6 +22,16 @@ app.get('/api/songs', async (req, res) => {
   }
 });
 
+app.get('/api/genres', async (req, res) => {
+  try {
+    const genres = await spotifyHandler.getAvailableGenres();
+    res.json(genres); 
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Error fetching genres');
+  }
+});
+
 app.listen(8000, () => {
   console.log('Server running on http://localhost:8000');
 });

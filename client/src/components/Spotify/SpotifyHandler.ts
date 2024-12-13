@@ -1,6 +1,7 @@
 import SpotifyWebApi from 'spotify-web-api-node';
 import dotenv from 'dotenv';
 import { SpotifySongsDataSource } from './SpotifySongsDataSource';
+import { P } from '@clerk/clerk-react/dist/useAuth-DT1ot2zi';
 dotenv.config()
 
 export class SpotifyHandler {
@@ -29,7 +30,13 @@ export class SpotifyHandler {
 
     async getAvailableGenres() {
         await this.initializeToken();
-        return this.spotifyApi.getAvailableGenreSeeds();
+        try {
+            const response = await this.spotifyApi.getAvailableGenreSeeds();
+            return response.body.genres;
+        } catch (error) {
+            console.error('Error getting available genres', error);
+            throw error
+        }
     }
 
     async getPopularSongsByGenre(genre: string, count: number, difficulty: number) {
