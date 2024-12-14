@@ -1,20 +1,16 @@
-Required Dependencies
-Frontend dependencies:
-bashCopynpm install react react-dom react-router-dom @tailwindcss/forms tailwindcss postcss autoprefixer lucide-react
-Backend dependencies:
+# Frontend dependencies:
+install react react-dom react-router-dom @tailwindcss/forms tailwindcss postcss autoprefixer lucide-react
+
+# Backend dependencies:
 bashCopynpm install express cors dotenv spotify-web-api-node axios
-Development dependencies:
-bashCopynpm install -D typescript @types/react @types/react-dom @types/express @types/cors @types/spotify-web-api-node nodemon ts-node @vitejs/plugin-react
-Running the Application
 
-Start the backend server:
+# Development dependencies:
+install -D typescript @types/react @types/react-dom @types/express @types/cors @types/spotify-web-api-node nodemon ts-node @vitejs/plugin-react
 
-bashCopycd server
+# Start the backend server:
 npm run dev
 The server will run on http://localhost:8000
 
-In a new terminal, start the frontend development server:
-
-bashCopycd client
+# Frontend server
 npm run dev
 The frontend will run on http://localhost:5173
