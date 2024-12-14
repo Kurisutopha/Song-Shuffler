@@ -2,7 +2,7 @@
 install react react-dom react-router-dom @tailwindcss/forms tailwindcss postcss autoprefixer lucide-react
 
 # Backend dependencies:
-bashCopynpm install express cors dotenv spotify-web-api-node axios
+install express cors dotenv spotify-web-api-node axios
 
 # Development dependencies:
 install -D typescript @types/react @types/react-dom @types/express @types/cors @types/spotify-web-api-node nodemon ts-node @vitejs/plugin-react
