@@ -1,21 +1,22 @@
-import "../styles/App.css";
+import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Layout, MainHeading, Card } from './StyledComponents';
 import PlaylistInput from './PlaylistInput';
 import Game from './Game';
 
 function Home() {
   return (
-    <div className="App">
-      <div className="app">
-        <h1 className="title">Welcome to Chime In</h1>
+    <Layout>
+      <MainHeading>Welcome to Chime In</MainHeading>
+      <Card>
         <PlaylistInput />
-        <p className="rules">
+        <p className="text-gray-300 mt-6 text-center leading-relaxed">
           Rules of the game: Enter a Spotify playlist URL and try to guess the songs!
           You'll hear a snippet of each song and need to guess the title or artist.
           The faster you guess correctly, the more points you'll earn!
         </p>
-      </div>
-    </div>
+      </Card>
+    </Layout>
   );
 }
 

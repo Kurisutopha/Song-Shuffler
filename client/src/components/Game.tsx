@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Layout, Card, Button, Input, Alert, ScoreDisplay, GameProgress } from './StyledComponents';
 
 interface Track {
   id: string;
@@ -19,7 +20,7 @@ const Game: React.FC = () => {
   const [guess, setGuess] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(30); 
+  const [timeLeft, setTimeLeft] = useState(30);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -130,98 +131,86 @@ const Game: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Loading game...</div>
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-xl text-white">Loading game...</div>
+        </div>
+      </Layout>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-red-600 mb-4">Error: {error}</div>
-        <button
-          onClick={() => navigate('/')}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-        >
-          Back to Home
-        </button>
-      </div>
+      <Layout>
+        <Card>
+          <Alert type="error" message={error} />
+          <Button onClick={() => navigate('/')} variant="secondary">
+            Back to Home
+          </Button>
+        </Card>
+      </Layout>
     );
   }
 
   if (currentTrackIndex >= tracks.length) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <h2 className="text-2xl font-bold mb-4">Game Over!</h2>
-        <p className="text-xl mb-4">Final Score: {score}</p>
-        <button
-          onClick={() => navigate('/')}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-        >
-          Play Again
-        </button>
-      </div>
+      <Layout>
+        <Card>
+          <h2 className="text-2xl font-bold mb-4 text-white text-center">Game Over!</h2>
+          <p className="text-xl mb-6 text-center text-green-400">Final Score: {score}</p>
+          <Button onClick={() => navigate('/')} variant="primary">
+            Play Again
+          </Button>
+        </Card>
+      </Layout>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <Layout>
       {!gameStarted ? (
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Ready to Play?</h2>
-          <button
-            onClick={startGame}
-            className="bg-green-500 text-white px-6 py-3 rounded-lg text-lg hover:bg-green-600"
-          >
+        <Card>
+          <h2 className="text-2xl font-bold mb-6 text-white text-center">Ready to Play?</h2>
+          <Button onClick={startGame} variant="primary">
             Start Game
-          </button>
-        </div>
+          </Button>
+        </Card>
       ) : (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div className="text-xl font-semibold">Score: {score}</div>
-            <div className="text-xl font-semibold">Time: {timeLeft}s</div>
-          </div>
-          
-          <div className="bg-gray-100 p-4 rounded-lg">
-            <p className="text-gray-600 mb-2">Song {currentTrackIndex + 1} of {tracks.length}</p>
-          </div>
+        <Card>
+          <ScoreDisplay score={score} timeLeft={timeLeft} />
+          <GameProgress 
+            current={currentTrackIndex + 1} 
+            total={tracks.length} 
+          />
 
           <div className="space-y-4">
-            <input
-              type="text"
+            <Input
               value={guess}
               onChange={(e) => setGuess(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleGuess()}
               placeholder="Enter song title or artist name..."
-              className="w-full p-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
               disabled={showAnswer}
             />
 
-            <button
+            <Button
               onClick={handleGuess}
               disabled={showAnswer || !guess.trim()}
-              className={`w-full p-3 rounded-lg text-white font-medium
-                ${showAnswer || !guess.trim() 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-green-500 hover:bg-green-600'}`}
+              variant="primary"
             >
               Submit Guess
-            </button>
+            </Button>
           </div>
 
           {showAnswer && (
-            <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
-              <p className="text-green-700">
+            <div className="mt-6 bg-green-900/50 border-l-4 border-green-500 p-4 rounded-lg">
+              <p className="text-green-200">
                 The song was "{tracks[currentTrackIndex].name}" by{' '}
                 {tracks[currentTrackIndex].artists.map(a => a.name).join(', ')}
               </p>
             </div>
           )}
-        </div>
+        </Card>
       )}
-    </div>
+    </Layout>
   );
 };
 

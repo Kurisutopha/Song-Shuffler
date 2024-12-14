@@ -1,36 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card, Button, Input, Alert } from './StyledComponents';
 
 const PlaylistInput: React.FC = () => {
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const navigate = useNavigate();
+
+    const handleAuth = async () => {
+        try {
+            console.log('Attempting to connect to Spotify...');
+            const response = await fetch('http://localhost:8000/login');
+            console.log('Server response:', response);
+            const data = await response.json();
+            console.log('Login data:', data);
+            window.location.href = data.url;
+        } catch (err) {
+            console.error('Auth error:', err);
+            setError('Failed to initiate authentication. Please try again.');
+        }
+    };
+
+    const checkAuthStatus = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/auth-status');
+            const data = await response.json();
+            setIsAuthenticated(data.isAuthenticated);
+        } catch (err) {
+            setIsAuthenticated(false);
+        }
+    };
+
+    useEffect(() => {
+        checkAuthStatus();
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isAuthenticated) {
+            handleAuth();
+            return;
+        }
+
         setError(null);
         setIsLoading(true);
 
         try {
-            const serverCheck = await fetch('http://localhost:8000/');
-            if (!serverCheck.ok) {
-                throw new Error('Server is not running. Please start the backend server.');
-            }
-
             const response = await fetch(
                 `http://localhost:8000/api/playlist-tracks?` + 
                 `url=${encodeURIComponent(playlistUrl)}&count=1`
             );
 
             if (!response.ok) {
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to load playlist');
-                } else {
-                    throw new Error('Invalid server response. Please check if the server is running correctly.');
-                }
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to load playlist');
             }
 
             const data = await response.json();
@@ -52,45 +77,42 @@ const PlaylistInput: React.FC = () => {
     };
 
     return (
-        <div className="max-w-xl mx-auto p-6">
-            <h2 className="text-2xl font-bold mb-4">Enter a Spotify Playlist</h2>
-            <p className="text-gray-600 mb-6">
-                Paste a link to any public Spotify playlist to use those songs in the game.
-                The playlist should contain at least 10 songs with preview URLs available.
-            </p>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <input
-                    type="text"
-                    value={playlistUrl}
-                    onChange={(e) => setPlaylistUrl(e.target.value)}
-                    placeholder="https://open.spotify.com/playlist/..."
-                    className="w-full p-3 border rounded shadow-sm"
-                    disabled={isLoading}
-                />
-                
-                {error && (
-                    <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <p className="text-red-700">{error}</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                
-                <button
-                    type="submit"
-                    className={`w-full p-3 rounded text-white font-medium
-                        ${isLoading 
-                            ? 'bg-gray-400 cursor-not-allowed' 
-                            : 'bg-green-500 hover:bg-green-600'}`}
-                    disabled={isLoading || !playlistUrl.trim()}
-                >
-                    {isLoading ? 'Checking playlist...' : 'Start Game'}
-                </button>
-            </form>
-        </div>
+        <Card>
+            <h2 className="text-2xl font-bold mb-6 text-white text-center">
+                Enter a Spotify Playlist
+            </h2>
+
+            {!isAuthenticated ? (
+                <div className="text-center">
+                    <p className="mb-4 text-gray-300">
+                        Connect with Spotify to start playing
+                    </p>
+                    <Button onClick={handleAuth}>
+                        Connect with Spotify
+                    </Button>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <Input
+                        value={playlistUrl}
+                        onChange={(e) => setPlaylistUrl(e.target.value)}
+                        placeholder="https://open.spotify.com/playlist/..."
+                        disabled={isLoading}
+                    />
+                    
+                    {error && (
+                        <Alert type="error" message={error} />
+                    )}
+                    
+                    <Button
+                        onClick={() => {}}
+                        disabled={isLoading || !playlistUrl.trim()}
+                    >
+                        {isLoading ? 'Checking playlist...' : 'Start Game'}
+                    </Button>
+                </form>
+            )}
+        </Card>
     );
 };
 

@@ -1,48 +1,60 @@
 import SpotifyWebApi from 'spotify-web-api-node';
 import dotenv from 'dotenv';
-import { SpotifySongsDataSource } from './SpotifySongsDataSource';
-import axios from 'axios';
 
 dotenv.config();
 
+interface Artist {
+    name: string;
+}
+
+interface Track {
+    id: string;
+    name: string;
+    preview_url: string | null;
+    artists: Artist[];
+}
+
+interface PlaylistTrackItem {
+    track: Track | null;
+}
+
 export class SpotifyHandler {
-    private spotifyApi: SpotifyWebApi;
-    private songsDatasource: SpotifySongsDataSource;
+    readonly spotifyApi: SpotifyWebApi;
     private tokenExpirationTime: number = 0;
 
-    constructor(songsDatasource: SpotifySongsDataSource) {
+    constructor() {
         if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
             throw new Error('Missing Spotify credentials');
         }
 
         this.spotifyApi = new SpotifyWebApi({
             clientId: process.env.SPOTIFY_CLIENT_ID,
-            clientSecret: process.env.SPOTIFY_CLIENT_SECRET
+            clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+            redirectUri: process.env.REDIRECT_URI || 'http://localhost:8000/callback'
         });
-        this.songsDatasource = songsDatasource;
     }
 
-    private async initializeToken() {
-        try {
-            const data = await this.spotifyApi.clientCredentialsGrant();
-            const accessToken = data.body['access_token'];
-            const expiresIn = data.body['expires_in'];
-            
-            this.spotifyApi.setAccessToken(accessToken);
-            this.tokenExpirationTime = Date.now() + (expiresIn * 1000) - 60000;
-            console.log('Token initialized successfully');
-            return true;
-        } catch (error) {
-            console.error('Failed to initialize token:', error);
-            return false;
-        }
+    setTokenExpirationTime(expiresIn: number) {
+        this.tokenExpirationTime = Date.now() + (expiresIn * 1000) - 60000;
     }
 
-    private async ensureValidToken() {
+    hasValidToken(): boolean {
+        const accessToken = this.spotifyApi.getAccessToken();
+        return !!accessToken && Date.now() < this.tokenExpirationTime;
+    }
+
+    private async refreshTokenIfNeeded(): Promise<void> {
         if (Date.now() >= this.tokenExpirationTime) {
-            return this.initializeToken();
+            try {
+                const data = await this.spotifyApi.refreshAccessToken();
+                this.spotifyApi.setAccessToken(data.body['access_token']);
+                this.setTokenExpirationTime(data.body['expires_in']);
+                console.log('Token refreshed successfully');
+            } catch (error) {
+                console.error('Error refreshing token:', error);
+                throw new Error('Failed to refresh access token');
+            }
         }
-        return true;
     }
 
     private extractPlaylistId(playlistUrl: string): string {
@@ -64,100 +76,51 @@ export class SpotifyHandler {
     async getTracksFromPlaylist(playlistUrl: string, numberOfSongs: number) {
         try {
             console.log(`Attempting to get ${numberOfSongs} tracks from playlist`);
-            
-            await this.ensureValidToken();
-            const accessToken = this.spotifyApi.getAccessToken();
-            console.log('Access token obtained');
+            await this.refreshTokenIfNeeded();
             
             const playlistId = this.extractPlaylistId(playlistUrl);
             console.log('Getting tracks for playlist:', playlistId);
 
-            const metadataResponse = await axios.get(
-                `https://api.spotify.com/v1/playlists/${playlistId}`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            console.log('Playlist metadata retrieved:', {
-                name: metadataResponse.data.name,
-                totalTracks: metadataResponse.data.tracks.total,
-                isPublic: metadataResponse.data.public
+            const response = await this.spotifyApi.getPlaylistTracks(playlistId, {
+                limit: 100,
+                offset: 0,
+                fields: 'items(track(id,name,preview_url,artists(name)))'
             });
 
-            if (!metadataResponse.data.tracks.total) {
-                throw new Error('Playlist appears to be empty');
+            const items = response.body.items as PlaylistTrackItem[];
+            console.log(`Retrieved ${items.length} tracks from playlist`);
+
+            const tracksWithPreviews = items
+                .filter((item): item is {track: Track} => {
+                    return item.track !== null && 
+                           item.track.preview_url !== null && 
+                           item.track.preview_url !== undefined;
+                })
+                .map(item => ({
+                    id: item.track.id,
+                    name: item.track.name,
+                    preview_url: item.track.preview_url,
+                    artists: item.track.artists.map(artist => ({
+                        name: artist.name
+                    }))
+                }));
+
+            console.log(`Found ${tracksWithPreviews.length} tracks with preview URLs`);
+
+            if (tracksWithPreviews.length === 0) {
+                throw new Error('No tracks with preview URLs found in this playlist. Try a different playlist.');
             }
 
-            // Get the first batch of tracks
-            const tracksResponse = await axios.get(
-                `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    params: {
-                        limit: 100,
-                        market: 'US'
-                    }
-                }
-            );
-
-            console.log('Initial tracks response received');
+            const shuffled = [...tracksWithPreviews].sort(() => Math.random() - 0.5);
+            const selectedTracks = shuffled.slice(0, Math.min(numberOfSongs, shuffled.length));
             
-            let availableTracks = [];
-            let tracksChecked = 0;
-
-            for (const item of tracksResponse.data.items) {
-                if (!item.track) {
-                    console.log('Skipping item - no track data');
-                    continue;
-                }
-
-                tracksChecked++;
-                
-                console.log(`Track "${item.track.name}": preview_url ${item.track.preview_url ? 'available' : 'not available'}`);
-
-                if (item.track.preview_url) {
-                    availableTracks.push({
-                        id: item.track.id,
-                        name: item.track.name,
-                        preview_url: item.track.preview_url,
-                        artists: item.track.artists.map((artist: any) => ({
-                            name: artist.name
-                        }))
-                    });
-
-                    if (availableTracks.length >= numberOfSongs) {
-                        break;
-                    }
-                }
-            }
-
-            console.log(`Checked ${tracksChecked} tracks, found ${availableTracks.length} with preview URLs`);
-
-            if (availableTracks.length === 0) {
-                throw new Error(`No tracks with preview URLs found after checking ${tracksChecked} songs. Try a different playlist or region.`);
-            }
-
-            if (availableTracks.length < numberOfSongs) {
-                console.warn(`Warning: Only found ${availableTracks.length} tracks with previews out of ${tracksChecked} checked`);
-            }
-
-            return availableTracks;
+            console.log('Selected tracks:', selectedTracks.map(t => t.name));
+            return selectedTracks;
 
         } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.error('Axios error details:', {
-                    status: error.response?.status,
-                    statusText: error.response?.statusText,
-                    data: error.response?.data,
-                    message: error.message
-                });
+            console.error('Error fetching playlist:', error);
+            if (error instanceof Error) {
+                throw new Error(`Failed to get tracks: ${error.message}`);
             }
             throw error;
         }

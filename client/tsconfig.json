@@ -17,6 +17,6 @@
     "jsx": "react-jsx",
     "types": ["vite/client"]
   }, 
-  "include": ["src", "../server/src/Spotify", "../server/src/Index.ts"],
+  "include": ["src", "../server/src/Spotify", "../server/src/Index.ts", "postcss.config.js"],
   "exclude": ["src/backend"]
 }
