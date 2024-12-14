@@ -1,45 +1,33 @@
 import "../styles/App.css";
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
-import GenreSearch from './GenreSearch';
-
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import PlaylistInput from './PlaylistInput';
+import Game from './Game';
 
 function Home() {
- const navigate = useNavigate();
-
-
- const handleStart = () => {
-   navigate('/select-genre');
- };
-
-
- return (
-   <div className="App">
-     <div className="app">
-       <h1 className="title">Welcome to Chime In</h1>
-       <button className="start-button" onClick={handleStart}>
-         Start
-       </button>
-       <p className="rules">
-         Rules of the game: Press start and select a genre of music, the game will play a snippet
-         of a random song 10 times. Guess the songs to win a point and link your spotify to add
-         them to your playlists!
-       </p>
-     </div>
-   </div>
- );
+  return (
+    <div className="App">
+      <div className="app">
+        <h1 className="title">Welcome to Chime In</h1>
+        <PlaylistInput />
+        <p className="rules">
+          Rules of the game: Enter a Spotify playlist URL and try to guess the songs!
+          You'll hear a snippet of each song and need to guess the title or artist.
+          The faster you guess correctly, the more points you'll earn!
+        </p>
+      </div>
+    </div>
+  );
 }
-
 
 function App() {
- return (
-   <Router>
-     <Routes>
-       <Route path="/" element={<Home />} />
-       <Route path="/select-genre" element={<GenreSearch />} />
-     </Routes>
-   </Router>
- );
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/game" element={<Game />} />
+      </Routes>
+    </Router>
+  );
 }
-
 
 export default App;
