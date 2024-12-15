@@ -1,86 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Alert } from './StyledComponents';
+import { useAuth } from './AuthContext'
 
 const PlaylistInput: React.FC = () => {
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const navigate = useNavigate();
-
-    // Listen for messages from the popup window
-    useEffect(() => {
-        const handleAuthMessage = (event: MessageEvent) => {
-            // Only accept messages from our backend URL
-            if (event.origin !== 'http://localhost:8000') return;
-
-            if (event.data.type === 'spotify-auth-success') {
-                setIsAuthenticated(true);
-                checkAuthStatus(); // Recheck auth status after successful login
-            }
-        };
-
-        window.addEventListener('message', handleAuthMessage);
-        return () => window.removeEventListener('message', handleAuthMessage);
-    }, []);
-
-    const handleAuth = async () => {
-        try {
-            console.log('Attempting to connect to Spotify...');
-            const response = await fetch('http://localhost:8000/login');
-            const data = await response.json();
-            
-            // Open a popup window for authentication
-            const width = 450;
-            const height = 730;
-            const left = window.screen.width / 2 - width / 2;
-            const top = window.screen.height / 2 - height / 2;
-
-            window.open(
-                data.url,
-                'Spotify Login',
-                `width=${width},height=${height},left=${left},top=${top}`
-            );
-        } catch (err) {
-            console.error('Auth error:', err);
-            setError('Failed to initiate authentication. Please try again.');
-        }
-    };
-
-
-    // const handleAuth = async () => {
-    //     try {
-    //         console.log('Attempting to connect to Spotify...');
-    //         const response = await fetch('http://localhost:8000/login');
-    //         console.log('Server response:', response);
-    //         const data = await response.json();
-    //         console.log('Login data:', data);
-    //         window.location.href = data.url;
-    //     } catch (err) {
-    //         console.error('Auth error:', err);
-    //         setError('Failed to initiate authentication. Please try again.');
-    //     }
-    // };
-
-    const checkAuthStatus = async () => {
-        try {
-            const response = await fetch('http://localhost:8000/auth-status');
-            const data = await response.json();
-            setIsAuthenticated(data.isAuthenticated);
-        } catch (err) {
-            setIsAuthenticated(false);
-        }
-    };
-
-    useEffect(() => {
-        checkAuthStatus();
-    }, []);
+    const { isAuthenticated, handleAuth } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isAuthenticated) {
-            handleAuth();
+            try {
+                await handleAuth();
+            } catch (err) {
+                setError('Failed to initiate authentication. Please try again.');
+            }
             return;
         }
 
@@ -145,7 +82,7 @@ const PlaylistInput: React.FC = () => {
                     )}
                     
                     <Button
-                        onClick={() => {}}
+                        type="submit"
                         disabled={isLoading || !playlistUrl.trim()}
                     >
                         {isLoading ? 'Checking playlist...' : 'Start Game'}

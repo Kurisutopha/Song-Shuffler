@@ -14,36 +14,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Add endpoint to clear the session
-// app.get('/clear-session', (_req, res) => {
-//   spotifyHandler.clearTokens();
-//   res.json({ success: true });
-// });
-
-// const callback = async (req: Request, res: Response) => {
-//   const code = req.query.code as string | undefined;
-//   const error = req.query.error as string | undefined;
-
-//   if (error) {
-//       console.error('Auth error:', error);
-//       res.redirect('http://localhost:5173?error=auth_failed');
-//       return;
-//   }
-
-//   if (!code) {
-//       res.status(400).json({ error: 'Invalid code parameter' });
-//       return;
-//   }
-
-//   try {
-//       await spotifyHandler.handleCallback(code);
-//       res.redirect('http://localhost:5173');
-//   } catch (error) {
-//       console.error('Error in callback:', error);
-//       res.redirect('http://localhost:5173?error=auth_failed');
-//   }
-// };
-
 const spotifyHandler = new SpotifyHandler();
 
 type AsyncRequestHandler = (
@@ -68,6 +38,16 @@ const login: RequestHandler = (_req, res) => {
   } catch (error) {
     console.error('Error generating login URL:', error);
     res.status(500).json({ error: 'Failed to generate login URL' });
+  }
+};
+
+const clearAuth: RequestHandler = (_req, res) => {
+  try {
+    spotifyHandler.clearTokens();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing auth:', error);
+    res.status(500).json({ error: 'Failed to clear authentication' });
   }
 };
 
@@ -138,36 +118,20 @@ const callback: RequestHandler = async (req, res) => {
   }
 };
 
-// const callback: RequestHandler = async (req, res) => {
-//   const code = req.query.code as string | undefined;
-//   const error = req.query.error as string | undefined;
-
-//   if (error) {
-//     console.error('Auth error:', error);
-//     res.redirect('http://localhost:5173?error=auth_failed');
-//     return;
-//   }
-
-//   if (!code) {
-//     res.status(400).json({ error: 'Invalid code parameter' });
-//     return;
-//   }
-
-//   try {
-//     const data = await spotifyHandler.spotifyApi.authorizationCodeGrant(code);
-//     spotifyHandler.spotifyApi.setAccessToken(data.body['access_token']);
-//     spotifyHandler.spotifyApi.setRefreshToken(data.body['refresh_token']);
-//     spotifyHandler.setTokenExpirationTime(data.body['expires_in']);
-//     res.redirect('http://localhost:5173');
-//   } catch (error) {
-//     console.error('Error in callback:', error);
-//     res.redirect('http://localhost:5173?error=auth_failed');
-//   }
-// };
-
-const authStatus: RequestHandler = (_req, res) => {
-  const isAuthenticated = spotifyHandler.hasValidToken();
-  res.json({ isAuthenticated });
+const authStatus: RequestHandler = async (_req, res) => {
+  try {
+    const isAuthenticated = spotifyHandler.hasValidToken();
+    
+    // If token is invalid, clear it
+    if (!isAuthenticated) {
+      spotifyHandler.clearTokens();
+    }
+    
+    res.json({ isAuthenticated });
+  } catch (error) {
+    console.error('Error checking auth status:', error);
+    res.status(500).json({ error: 'Failed to check authentication status' });
+  }
 };
 
 const getPlaylistTracks: RequestHandler = async (req, res) => {
@@ -195,6 +159,7 @@ app.get('/', healthCheck);
 app.get('/login', login);
 app.get('/callback', callback);
 app.get('/auth-status', authStatus);
+app.get('/clear-auth', clearAuth); 
 app.get('/api/playlist-tracks', getPlaylistTracks);
 
 const PORT = process.env.PORT || 8000;
