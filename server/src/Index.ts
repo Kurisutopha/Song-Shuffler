@@ -14,6 +14,36 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Add endpoint to clear the session
+// app.get('/clear-session', (_req, res) => {
+//   spotifyHandler.clearTokens();
+//   res.json({ success: true });
+// });
+
+// const callback = async (req: Request, res: Response) => {
+//   const code = req.query.code as string | undefined;
+//   const error = req.query.error as string | undefined;
+
+//   if (error) {
+//       console.error('Auth error:', error);
+//       res.redirect('http://localhost:5173?error=auth_failed');
+//       return;
+//   }
+
+//   if (!code) {
+//       res.status(400).json({ error: 'Invalid code parameter' });
+//       return;
+//   }
+
+//   try {
+//       await spotifyHandler.handleCallback(code);
+//       res.redirect('http://localhost:5173');
+//   } catch (error) {
+//       console.error('Error in callback:', error);
+//       res.redirect('http://localhost:5173?error=auth_failed');
+//   }
+// };
+
 const spotifyHandler = new SpotifyHandler();
 
 type AsyncRequestHandler = (
@@ -47,7 +77,20 @@ const callback: RequestHandler = async (req, res) => {
 
   if (error) {
     console.error('Auth error:', error);
-    res.redirect('http://localhost:5173?error=auth_failed');
+    // Send error message to opener and close window
+    res.send(`
+      <html>
+        <body>
+          <script>
+            window.opener.postMessage(
+              { type: 'spotify-auth-error', error: '${error}' },
+              'http://localhost:5173'
+            );
+            window.close();
+          </script>
+        </body>
+      </html>
+    `);
     return;
   }
 
@@ -61,12 +104,66 @@ const callback: RequestHandler = async (req, res) => {
     spotifyHandler.spotifyApi.setAccessToken(data.body['access_token']);
     spotifyHandler.spotifyApi.setRefreshToken(data.body['refresh_token']);
     spotifyHandler.setTokenExpirationTime(data.body['expires_in']);
-    res.redirect('http://localhost:5173');
+
+    // Send success message to opener and close window
+    res.send(`
+      <html>
+        <body>
+          <script>
+            window.opener.postMessage(
+              { type: 'spotify-auth-success' },
+              'http://localhost:5173'
+            );
+            window.close();
+          </script>
+        </body>
+      </html>
+    `);
   } catch (error) {
     console.error('Error in callback:', error);
-    res.redirect('http://localhost:5173?error=auth_failed');
+    // Send error message to opener and close window
+    res.send(`
+      <html>
+        <body>
+          <script>
+            window.opener.postMessage(
+              { type: 'spotify-auth-error', error: 'Failed to authenticate' },
+              'http://localhost:5173'
+            );
+            window.close();
+          </script>
+        </body>
+      </html>
+    `);
   }
 };
+
+// const callback: RequestHandler = async (req, res) => {
+//   const code = req.query.code as string | undefined;
+//   const error = req.query.error as string | undefined;
+
+//   if (error) {
+//     console.error('Auth error:', error);
+//     res.redirect('http://localhost:5173?error=auth_failed');
+//     return;
+//   }
+
+//   if (!code) {
+//     res.status(400).json({ error: 'Invalid code parameter' });
+//     return;
+//   }
+
+//   try {
+//     const data = await spotifyHandler.spotifyApi.authorizationCodeGrant(code);
+//     spotifyHandler.spotifyApi.setAccessToken(data.body['access_token']);
+//     spotifyHandler.spotifyApi.setRefreshToken(data.body['refresh_token']);
+//     spotifyHandler.setTokenExpirationTime(data.body['expires_in']);
+//     res.redirect('http://localhost:5173');
+//   } catch (error) {
+//     console.error('Error in callback:', error);
+//     res.redirect('http://localhost:5173?error=auth_failed');
+//   }
+// };
 
 const authStatus: RequestHandler = (_req, res) => {
   const isAuthenticated = spotifyHandler.hasValidToken();

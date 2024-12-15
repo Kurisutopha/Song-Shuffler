@@ -43,6 +43,21 @@ export class SpotifyHandler {
         return !!accessToken && Date.now() < this.tokenExpirationTime;
     }
 
+    // clearTokens() {
+    //     this.spotifyApi.setAccessToken('');
+    //     this.spotifyApi.setRefreshToken('');
+    //     this.tokenExpirationTime = 0;
+    // }
+
+    // async handleCallback(code: string) {
+    //     const data = await this.spotifyApi.authorizationCodeGrant(code);
+    //     this.spotifyApi.setAccessToken(data.body['access_token']);
+    //     // Don't set refresh token anymore
+    //     this.setTokenExpirationTime(data.body['expires_in']);
+    //     return data;
+    // }
+
+
     private async refreshTokenIfNeeded(): Promise<void> {
         if (Date.now() >= this.tokenExpirationTime) {
             try {
