@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import { Layout, Card, Button, Input, Alert, ScoreDisplay, GameProgress } from './StyledComponents';
 
 interface Track {
@@ -10,6 +11,7 @@ interface Track {
 }
 
 const Game: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -22,6 +24,19 @@ const Game: React.FC = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const isPageRefresh = (
+      window.performance &&
+      window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD
+    );
+
+    if (isPageRefresh || !isAuthenticated) {
+      console.log('Invalid game state or page refreshed, redirecting to home...');
+      navigate('/');
+      return;
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     const playlistUrl = location.state?.playlistUrl;

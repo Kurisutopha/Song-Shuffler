@@ -43,6 +43,13 @@ export class SpotifyHandler {
         return !!accessToken && Date.now() < this.tokenExpirationTime;
     }
 
+    clearTokens() {
+        this.spotifyApi.setAccessToken('');
+        this.spotifyApi.setRefreshToken('');
+        this.tokenExpirationTime = 0;
+    }
+
+
     private async refreshTokenIfNeeded(): Promise<void> {
         if (Date.now() >= this.tokenExpirationTime) {
             try {

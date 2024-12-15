@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Layout, MainHeading, Card } from './StyledComponents';
 import PlaylistInput from './PlaylistInput';
+import { AuthProvider } from './AuthContext';
 import Game from './Game';
 
 function Home() {
@@ -23,10 +24,12 @@ function Home() {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/game" element={<Game />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/game" element={<Game />} />
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }
