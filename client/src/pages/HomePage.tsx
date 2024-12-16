@@ -18,16 +18,20 @@ function HomePage(){
   const [options, setOptions] = useState<string[]>([]);
   const [selectedOption, setSelectedOption] = useState("");
   const [score, setScore] = useState(0);
-  const [playerId, setplayerId] = useState(null);
+  const [playerId, setPlayerId] = useState(uuidv4());
+
+  
 
   const clientRef = useRef<any>(null)
   const [isInitialized, setIsInitialized] = useState(false);
+
+  const [canSubmit, setCanSubmit] = useState(true);
+  const [waitingForOthers, setWaitingForOthers] = useState(false);
   console.log("HomePage mounted");
 
 
   
 
-  
 
     useEffect(() => {
       if (clientRef.current) return;
@@ -55,11 +59,27 @@ function HomePage(){
             console.log("Parsed question", questionText);
             setQuestion(questionText);
             setOptions(Array.isArray(options) ? options : []);
+            setCanSubmit(true);
+            setWaitingForOthers(false);
+          }
+
+          if (data.type === "PLAYERS_READY"){
+            
+            console.log('Player readied up')
           }
 
           if (data.type === "SCORE_UPDATE") {
+
+            if(data.payload.playerId === playerId){
+              setScore(data.payload.score);
+
+            }
             console.log("Score update received:", data.payload);
-            setScore(data.payload.score);
+          }
+
+          if (data.type === "GAME_OVER"){
+            const finalScores = data.payload.finalScores;
+            alert(`Game Over! Your final score: ${finalScores[playerId] || 0}`);
           }
 
   
@@ -95,20 +115,13 @@ function HomePage(){
   const sendMessage = (destination: string, messageBody: any) => {
     if(isConnected){
       console.log('attempt29');
-     
-    
-
-    stompClient.send(destination, {}, JSON.stringify(messageBody))
+      stompClient.send(destination, {}, JSON.stringify(messageBody))
     
   } else {
     console.log("websocket invalid")
   }
 }
     
-
-  
-
-
   const handleGameStart = async () => {
     
     if (isConnected) {
@@ -119,10 +132,29 @@ function HomePage(){
     }
   };
 
+  const handleReadyUp = async () => {
+    sendMessage("/app/player-ready", { 
+      playerId: playerId 
+    });
+
+  }
+
 
   const handleSubmit = async () => {
+    if (!canSubmit) {
+      console.warn("Cannot submit at this moment.");
+      return;
+    }
+
     if (selectedOption) {
-      sendMessage("/app/submit", { playerId: playerId ,answer: selectedOption });
+      sendMessage("/app/submit", { 
+        playerId: playerId,
+        answer: selectedOption 
+      });
+      
+      // Prevent further submissions
+      setCanSubmit(false);
+      setWaitingForOthers(true);
     } else {
       console.warn("No option selected to submit.");
     }
@@ -135,7 +167,12 @@ function HomePage(){
       <button onClick={handleGameStart} disabled={!isConnected}>
         Start Game
       </button>
-      <h3>Current Score: {score}</h3>
+      <button onClick = {handleReadyUp}>
+        Ready Up
+      </button>
+      <h3>Your Current Score: {score}</h3>
+      {waitingForOthers && <p>Waiting for other players to submit...</p>}
+      
       <div>
         <h4>Current Question:</h4>
         <p>{question}</p>
@@ -144,15 +181,22 @@ function HomePage(){
             <button
               key={index}
               onClick={() => setSelectedOption(option)}
+              disabled={!canSubmit}
               style={{
                 backgroundColor: selectedOption === option ? "blue" : "white",
+                opacity: canSubmit ? 1 : 0.5
               }}
             >
               {option}
             </button>
           ))}
         </div>
-        <button onClick={handleSubmit}>Submit Answer</button>
+        <button 
+          onClick={handleSubmit} 
+          disabled={!canSubmit || !selectedOption}
+        >
+          Submit Answer
+        </button>
       </div>
     </div>
   );
