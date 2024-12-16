@@ -6,7 +6,7 @@ import { RequestHandler } from 'express-serve-static-core';
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -162,7 +162,7 @@ app.get('/auth-status', authStatus);
 app.get('/clear-auth', clearAuth); 
 app.get('/api/playlist-tracks', getPlaylistTracks);
 
-const PORT = process.env.PORT || 8000;
+export const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
