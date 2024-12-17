@@ -29,7 +29,7 @@ const healthCheck: RequestHandler = (_req, res) => {
 
 const login: RequestHandler = (_req, res) => {
   try {
-    const scopes = ['playlist-read-private', 'playlist-read-collaborative'];
+    const scopes = ['playlist-read-private', 'playlist-read-collaborative ','user-read-playback-state','user-modify-playback-state','user-read-currently-playing','app-remote-control','streaming'];
     const state = Math.random().toString(36).substring(7);
     const authorizeURL = spotifyHandler.spotifyApi.createAuthorizeURL(scopes, state);
     
@@ -82,6 +82,9 @@ const callback: RequestHandler = async (req, res) => {
   try {
     const data = await spotifyHandler.spotifyApi.authorizationCodeGrant(code);
     spotifyHandler.spotifyApi.setAccessToken(data.body['access_token']);
+   console.log('access_token',data.body['access_token']);
+  
+
     spotifyHandler.spotifyApi.setRefreshToken(data.body['refresh_token']);
     spotifyHandler.setTokenExpirationTime(data.body['expires_in']);
 

@@ -35,7 +35,7 @@ const SpotifyPlayback: React.FC<SpotifyPlaybackProps> = ({
       await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`,
+          'Authorization': `Bearer BQAWBia-9l73jlVro2StzcyJFKfryaltZpoNZtCKJbcaNu5GbOaTXEw1jOAuZTI00jev1JKQhzoN48akZanfBVZ5M8oREXrE-q-Ggdvl5JjnxVJ8syzmFpavhoM_0Wmb9r6ia_EMDjVJArCX5weciFlBc4pWPAaOomQa1lnNGWKuriXVsvYi_SGb1RBqWBLbcnAMhhNOxGS_tqAJsblJAKQWMlqcsIX7O45viC5zAg`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -67,7 +67,7 @@ const SpotifyPlayback: React.FC<SpotifyPlaybackProps> = ({
       const player = new window.Spotify.Player({
         name: 'Chime In Game Player',
         getOAuthToken: cb => {
-          const accessToken = localStorage.getItem('spotify_access_token');
+          const accessToken = 'BQAWBia-9l73jlVro2StzcyJFKfryaltZpoNZtCKJbcaNu5GbOaTXEw1jOAuZTI00jev1JKQhzoN48akZanfBVZ5M8oREXrE-q-Ggdvl5JjnxVJ8syzmFpavhoM_0Wmb9r6ia_EMDjVJArCX5weciFlBc4pWPAaOomQa1lnNGWKuriXVsvYi_SGb1RBqWBLbcnAMhhNOxGS_tqAJsblJAKQWMlqcsIX7O45viC5zAg';
           cb(accessToken || '');
         }
       });
