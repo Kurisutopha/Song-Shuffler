@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Alert } from './StyledComponents';
-import { useAuth } from './AuthContext'
+import { useAuth } from './AuthContext';
 
 const PlaylistInput: React.FC = () => {
     const [playlistUrl, setPlaylistUrl] = useState('');
@@ -24,6 +24,13 @@ const PlaylistInput: React.FC = () => {
         setError(null);
         setIsLoading(true);
 
+        const playlistMatch = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
+        if (!playlistMatch && !playlistUrl.match(/^[a-zA-Z0-9]{22}$/)) {
+            setError('Invalid playlist URL format. Please enter a valid Spotify playlist URL.');
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const response = await fetch(
                 `http://localhost:8000/api/playlist-tracks?` + 
@@ -37,7 +44,7 @@ const PlaylistInput: React.FC = () => {
 
             const data = await response.json();
             if (!data || data.length === 0) {
-                throw new Error('No tracks found in playlist');
+                throw new Error('No playable tracks found in playlist');
             }
 
             navigate('/game', { state: { playlistUrl } });
@@ -54,7 +61,7 @@ const PlaylistInput: React.FC = () => {
     };
 
     return (
-        <Card>
+        <div>
             <h2 className="text-2xl font-bold mb-6 text-white text-center">
                 Enter a Spotify Playlist
             </h2>
@@ -87,9 +94,13 @@ const PlaylistInput: React.FC = () => {
                     >
                         {isLoading ? 'Checking playlist...' : 'Start Game'}
                     </Button>
+
+                    <p className="text-sm text-gray-400 text-center mt-4">
+                        Make sure you have Spotify open on this device to play music
+                    </p>
                 </form>
             )}
-        </Card>
+        </div>
     );
 };
 
