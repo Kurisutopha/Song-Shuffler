@@ -1,10 +1,10 @@
 import "../styles/App.css";
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
-import GenreSelect from "./SelectGenera";
-//import GenreSelect from "./SelectGenre";
+//import GenreSelect from "./SelectGenera";
+import GenreSelect from "./SelectGenre";
 import HomePage from "../pages/HomePage";
 
-/*
+
 function Home() {
  const navigate = useNavigate();
 
@@ -12,6 +12,10 @@ function Home() {
  const handleStart = () => {
    navigate('/select-genre');
  };
+/*
+ const handleStart = () => {
+  navigate('/homepage');
+};*/
 
 
  return (
@@ -38,14 +42,15 @@ function App() {
      <Routes>
        <Route path="/" element={<Home />} />
        <Route path="/select-genre" element={<GenreSelect />} />
+       <Route path="/homepage" element={<HomePage />} />
      </Routes>
    </Router>
  );
-} */
+} 
 
 
 
-
+/*
 window.global = window;
 
 
@@ -85,5 +90,5 @@ function App() {
     </Router>
   );
 }
-
+*/
 export default App;

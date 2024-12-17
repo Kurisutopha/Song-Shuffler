@@ -35,7 +35,6 @@ export class SpotifyHandler {
     async getPlaylistByGenre(token: string, genreId: string) {
         try {
           const limit = 10;
-          console.log(token);
           //const result = await fetch('https://api.spotify.com/v1/recommendations?seed_genres=${genreId}')
           const result = await fetch(`https://api.spotify.com/v1/search?q=genre%3A${genreId}&type=track&limit=10`, {
             method: 'GET',
@@ -45,8 +44,15 @@ export class SpotifyHandler {
     
           const data = await result.json();
           console.log(data)
-          //return data.playlists.items;
-          return data.tracks.items;
+          const tracksNameList: string[] = [];
+
+          for (var items in data.tracks.items){
+            tracksNameList.push(data.tracks.items[items].name)
+
+          }
+          //return list of song names
+          console.log(tracksNameList);
+          return tracksNameList;
         } catch (error) {
           console.error('Error fetching playlists:', error);
           return [];
