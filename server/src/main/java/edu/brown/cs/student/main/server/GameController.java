@@ -6,8 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -43,20 +45,19 @@ public class GameController {
   private final Moshi moshi = new Moshi.Builder().build();
   private boolean gameStarted = false;
 
-    @MessageMapping("/set-questions")
-    public void setQuestions(List<Question> newQuestions) {
-        if (newQuestions != null && !newQuestions.isEmpty()) {
-            
-            this.questions = newQuestions;
-            console.log(newQuestions);
-            // Reset game state when new questions are set
-            currentQuestionIndex = 0;
-            playerScores.clear();
-            submittedPlayers.clear();
-        }
-    }
+  @MessageMapping("/set-questions")
+  public void setQuestions(List<Question> newQuestions) {
+    // if (newQuestions != null && !newQuestions.isEmpty()) {
 
-    
+    this.questions = newQuestions;
+    System.out.println(newQuestions);
+    // console.log(newQuestions);
+    // Reset game state when new questions are set
+    currentQuestionIndex = 0;
+    playerScores.clear();
+    submittedPlayers.clear();
+  }
+
   @Autowired
   public GameController(
       SimpMessagingTemplate messagingTemplate,
@@ -78,46 +79,83 @@ public class GameController {
     messagingTemplate.convertAndSend("/topic/game", new GameMessage("PLAYERS_READY", readyMessage));
   }
 
-  @MessageMapping("/set-songs")
+  // System.out.println("before songs received");
+  public class SongSubmission {
+    private List<String> songs;
+
+    // Getters and setters
+    public List<String> getSongs() {
+      return songs;
+    }
+
     public void setSongs(List<String> songs) {
-        // Convert incoming songs to Question objects
-        List<Question> songQuestions = songs.stream()
-            .map(song -> new Question(
-                "What is the name of this song?", 
-                songs,
-                song
-            ))
-            .collect(Collectors.toList());
+      this.songs = songs;
+    }
+  }
 
-        // Update the questions list
-        this.questions = songQuestions;
-        
-        // Reset game state
-        currentQuestionIndex = 0;
-        playerScores.clear();
-        submittedPlayers.clear();
+  @MessageMapping("/set-songs")
+  @SendTo("/topic/game")
+  public void setSongs(@Payload List<String> songs) {
+    // Convert incoming songs to Question objects
+    // List<String> songs = submission.getSongs();
+    System.out.println("Recieved songs in GameController: " + songs);
+    if (songs == null || songs.isEmpty()) {
+      System.err.println("Recieved empty or null songs list");
+      return;
+    }
+    try {
 
-        // Broadcast that songs have been updated
-        Map<String, Object> songsUpdateMessage = new HashMap<>();
-        songsUpdateMessage.put("type", "SONGS_UPDATED");
-        songsUpdateMessage.put("songCount", songQuestions.size());
+      List<Question> songQuestions =
+          songs.stream()
+              .map(song -> new Question("What is the name of this song?", songs, song))
+              .collect(Collectors.toList());
 
-        messagingTemplate.convertAndSend("/topic/game", 
-            new GameMessage("SONGS_UPDATED", songsUpdateMessage));
-            }
+      System.out.println("Created song questions: " + songQuestions);
 
+      // Update the questions list
+      this.questions = songQuestions;
 
+      // Reset game state
+      currentQuestionIndex = 0;
+      playerScores.clear();
+      submittedPlayers.clear();
+
+      // Broadcast that songs have been updated
+      Map<String, Object> songsUpdateMessage = new HashMap<>();
+      songsUpdateMessage.put("type", "SONGS_UPDATED");
+      songsUpdateMessage.put("songCount", songQuestions.size());
+
+      messagingTemplate.convertAndSend(
+          "/topic/game", new GameMessage("SONGS_UPDATED", songsUpdateMessage));
+
+      if (!songQuestions.isEmpty() || songQuestions.size() == 3) {
+        Question firstQuestion = songQuestions.get(0);
+        Map<String, Object> questionMessage = new HashMap<>();
+        questionMessage.put("type", "QUESTION");
+        questionMessage.put("questionText", firstQuestion.getQuestionText());
+        questionMessage.put("options", firstQuestion.getOptions());
+
+        messagingTemplate.convertAndSend(
+            "/topic/game", new GameMessage("QUESTION", questionMessage));
+      }
+
+    } catch (Exception e) {
+      System.err.println("Error processing songs: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
 
   @MessageMapping("/start")
   @SendTo("/topic/game")
   public GameMessage startGame() {
 
-    if (questions == null || questions.isEmpty()) {
-            Map<String, Object> errorMessage = new HashMap<>();
-            errorMessage.put("type", "ERROR");
-            errorMessage.put("message", "No questions available. Please set questions first.");
-            return new GameMessage("ERROR", errorMessage);
-        }
+    if (questions == null || questions.isEmpty() || questions.size() == 3) {
+      Map<String, Object> errorMessage = new HashMap<>();
+      errorMessage.put("type", "ERROR");
+      errorMessage.put("message", "No questions available. Please set questions first.");
+      return new GameMessage("ERROR", errorMessage);
+    }
+    /*
         public void setQuestions(List<Question> newQuestions) {
         if (newQuestions != null && !newQuestions.isEmpty()) {
             this.questions = newQuestions;
@@ -127,9 +165,12 @@ public class GameController {
             submittedPlayers.clear();
         }
     }
+    */
     if (!gameService.getReadyPlayers().isEmpty()
         && gameService.getReadyPlayers().size() == getActivePlayerCount()) {
+      System.out.println("resetting game");
       // Reset game state
+      // this.questions = newQuestions;
       currentQuestionIndex = 0;
       playerScores.clear();
       submittedPlayers.clear();
@@ -137,10 +178,12 @@ public class GameController {
       gameStarted = true;
 
       if (currentQuestionIndex < questions.size()) {
+        System.out.println("in questions index stuff ");
         Question question = questions.get(currentQuestionIndex);
 
-
         Map<String, Object> questionMessage = new HashMap<>();
+        System.out.println("in questions mapping function ");
+
         questionMessage.put("type", "QUESTION");
         questionMessage.put("questionText", question.getQuestionText());
         questionMessage.put("options", question.getOptions());

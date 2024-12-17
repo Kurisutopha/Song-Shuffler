@@ -66,6 +66,12 @@ function HomePage(){
       setIsConnected(true);
 
 
+      if (selectedSongs && selectedSongs.length > 0) {
+        console.log("Sending songs on initial connection:", selectedSongs);
+        client.send("/app/set-songs", {}, JSON.stringify(selectedSongs));
+      }
+
+
 
       client.subscribe('/topic/game', (message) => {
         try {
@@ -94,9 +100,9 @@ function HomePage(){
         
               // You might want to pass these to the GameController via WebSocket or modify the existing questions
               //sendMessage("/app/set-songs",selectedSongs);
-              client.send("/app/set-songs", {}, JSON.stringify(selectedSongs));
+              //client.send("/app/set-songs", {}, JSON.stringify(selectedSongs));
               //console.log("Song Questions:", songQuestions);
-              console.log("Selected Songs:"+ selectedSongs)
+              //console.log("Selected Songs:"+ selectedSongs)
               
             }
           
@@ -149,11 +155,11 @@ function HomePage(){
 
   });
 
-  if (selectedSongs && selectedSongs.length > 0 && isConnected) {
-    //&& isConnected
-    console.log("Sending songs to game controller:", selectedSongs);
-    client.send("/app/set-songs", {}, JSON.stringify(selectedSongs));
-  }
+  // if (selectedSongs && selectedSongs.length > 0 && isConnected) {
+  //   //&& isConnected
+  //   console.log("Sending songs to game controller:", selectedSongs);
+  //   client.send("/app/set-songs", {}, JSON.stringify(selectedSongs));
+  // }
     return () => {
 
       if (clientRef.current) {
@@ -176,9 +182,9 @@ function HomePage(){
 
   const sendMessage = (destination: string, messageBody: any) => {
     if(isConnected){
-      console.log('attempt29');
-      console.log(messageBody)
-      stompClient.send(destination, {}, JSON.stringify(messageBody))
+      console.log('Sending message to ' + destination);
+      console.log('Message payload:' + JSON.stringify(messageBody));
+      stompClient.send(destination, {}, JSON.stringify(messageBody));
     
   } else {
     console.log("websocket invalid for" + JSON.stringify(messageBody))
@@ -187,8 +193,8 @@ function HomePage(){
     
   const handleGameStart = async () => {
     
-    if (isConnected) {
-      console.log('connected')
+    if (isConnected && selectedSongs && selectedSongs.length > 0) {
+      console.log('Sending songs:', selectedSongs);
 
       sendMessage("/app/set-songs", selectedSongs);
 
@@ -196,7 +202,7 @@ function HomePage(){
       sendMessage("/app/start", { type: "START_GAME" });
       
     } else {
-      console.warn("Cannot start game. WebSocket is not connected.");
+      console.warn("Cannot start game. WebSocket is not connected or no songs selected.");
     }
   };
 
