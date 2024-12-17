@@ -10,7 +10,7 @@ interface Artist {
 interface Track {
     id: string;
     name: string;
-    preview_url: string | null;
+    uri: string;
     artists: Artist[];
 }
 
@@ -49,14 +49,12 @@ export class SpotifyHandler {
         this.tokenExpirationTime = 0;
     }
 
-
     private async refreshTokenIfNeeded(): Promise<void> {
         if (Date.now() >= this.tokenExpirationTime) {
             try {
                 const data = await this.spotifyApi.refreshAccessToken();
                 this.spotifyApi.setAccessToken(data.body['access_token']);
                 this.setTokenExpirationTime(data.body['expires_in']);
-                console.log('Token refreshed successfully');
             } catch (error) {
                 console.error('Error refreshing token:', error);
                 throw new Error('Failed to refresh access token');
@@ -65,15 +63,12 @@ export class SpotifyHandler {
     }
 
     private extractPlaylistId(playlistUrl: string): string {
-        console.log('Extracting playlist ID from URL:', playlistUrl);
         const playlistMatch = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
         if (playlistMatch) {
-            console.log('Extracted playlist ID:', playlistMatch[1]);
             return playlistMatch[1];
         }
         
         if (playlistUrl.match(/^[a-zA-Z0-9]{22}$/)) {
-            console.log('URL is already a playlist ID:', playlistUrl);
             return playlistUrl;
         }
         
@@ -82,53 +77,42 @@ export class SpotifyHandler {
 
     async getTracksFromPlaylist(playlistUrl: string, numberOfSongs: number) {
         try {
-            console.log(`Attempting to get ${numberOfSongs} tracks from playlist`);
             await this.refreshTokenIfNeeded();
             
             const playlistId = this.extractPlaylistId(playlistUrl);
-            console.log('Getting tracks for playlist:', playlistId);
-
+            
             const response = await this.spotifyApi.getPlaylistTracks(playlistId, {
                 limit: 100,
                 offset: 0,
-                fields: 'items(track(id,name,preview_url,artists(name)))'
+                fields: 'items(track(id,name,uri,artists(name)))'
             });
 
             const items = response.body.items as PlaylistTrackItem[];
-            console.log(`Retrieved ${items.length} tracks from playlist`);
-
-            const tracksWithPreviews = items
+            
+            const validTracks = items
                 .filter((item): item is {track: Track} => {
-                    return item.track !== null && 
-                           item.track.preview_url !== null && 
-                           item.track.preview_url !== undefined;
+                    return item.track !== null;
                 })
                 .map(item => ({
                     id: item.track.id,
                     name: item.track.name,
-                    preview_url: item.track.preview_url,
+                    uri: item.track.uri,
                     artists: item.track.artists.map(artist => ({
                         name: artist.name
                     }))
                 }));
 
-            console.log(`Found ${tracksWithPreviews.length} tracks with preview URLs`);
-
-            if (tracksWithPreviews.length === 0) {
-                throw new Error('No tracks with preview URLs found in this playlist. Try a different playlist.');
+            if (validTracks.length === 0) {
+                throw new Error('No valid tracks found in this playlist.');
             }
 
-            const shuffled = [...tracksWithPreviews].sort(() => Math.random() - 0.5);
+            const shuffled = [...validTracks].sort(() => Math.random() - 0.5);
             const selectedTracks = shuffled.slice(0, Math.min(numberOfSongs, shuffled.length));
             
-            console.log('Selected tracks:', selectedTracks.map(t => t.name));
             return selectedTracks;
 
         } catch (error) {
             console.error('Error fetching playlist:', error);
-            if (error instanceof Error) {
-                throw new Error(`Failed to get tracks: ${error.message}`);
-            }
             throw error;
         }
     }

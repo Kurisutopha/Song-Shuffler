@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { Layout, Card, Button, Input, Alert, ScoreDisplay, GameProgress } from './StyledComponents';
+import GamePlayer from './GamePlayer';
 
 interface Track {
   id: string;
   name: string;
-  preview_url: string;
+  uri: string;
   artists: { name: string }[];
 }
 
@@ -23,7 +24,8 @@ const Game: React.FC = () => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [skipsRemaining, setSkipsRemaining] = useState(5);
 
   useEffect(() => {
     const isPageRefresh = (
@@ -59,7 +61,7 @@ const Game: React.FC = () => {
         
         const trackData = await response.json();
         if (trackData.length === 0) {
-          throw new Error('No tracks with preview URLs found in this playlist. Try a different playlist.');
+          throw new Error('No tracks found in this playlist.');
         }
         
         setTracks(trackData);
@@ -90,34 +92,22 @@ const Game: React.FC = () => {
   }, [gameStarted, showAnswer]);
 
   const handleTimeUp = useCallback(() => {
-    if (audioElement) {
-      audioElement.pause();
-    }
+    setIsPlaying(false);
     setShowAnswer(true);
     setTimeout(() => {
       setShowAnswer(false);
       setTimeLeft(30);
       setGuess('');
       setCurrentTrackIndex(prev => prev + 1);
+      if (currentTrackIndex < tracks.length - 1) {
+        setIsPlaying(true);
+      }
     }, 3000);
-  }, [audioElement]);
-
-  useEffect(() => {
-    if (tracks[currentTrackIndex]) {
-      const audio = new Audio(tracks[currentTrackIndex].preview_url);
-      setAudioElement(audio);
-      return () => {
-        audio.pause();
-        audio.remove();
-      };
-    }
-  }, [currentTrackIndex, tracks]);
+  }, [currentTrackIndex, tracks.length]);
 
   const startGame = () => {
     setGameStarted(true);
-    if (audioElement) {
-      audioElement.play();
-    }
+    setIsPlaying(true);
   };
 
   const handleGuess = () => {
@@ -131,15 +121,16 @@ const Game: React.FC = () => {
     if (isCorrect) {
       const timeBonus = Math.floor(timeLeft / 5);
       setScore(score + 10 + timeBonus);
-      if (audioElement) {
-        audioElement.pause();
-      }
+      setIsPlaying(false);
       setShowAnswer(true);
       setTimeout(() => {
         setShowAnswer(false);
         setTimeLeft(30);
         setGuess('');
         setCurrentTrackIndex(prev => prev + 1);
+        if (currentTrackIndex < tracks.length - 1) {
+          setIsPlaying(true);
+        }
       }, 3000);
     }
   };
@@ -198,7 +189,21 @@ const Game: React.FC = () => {
             total={tracks.length} 
           />
 
-          <div className="space-y-4">
+          <GamePlayer 
+            trackUri={tracks[currentTrackIndex]?.uri}
+            isPlaying={isPlaying}
+            onSkip={() => {
+              if (skipsRemaining > 0) {
+                setSkipsRemaining(prev => prev - 1);
+                setCurrentTrackIndex(prev => prev + 1);
+              }
+            }}
+            skipsRemaining={skipsRemaining}
+            timeLeft={timeLeft}
+            disabled={showAnswer}
+          />
+
+          <div className="space-y-4 mt-6">
             <Input
               value={guess}
               onChange={(e) => setGuess(e.target.value)}
