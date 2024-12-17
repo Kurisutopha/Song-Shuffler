@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/App.css";
 import { SpotifyHandler } from "./Spotify/SpotifyHandler";
 import { SpotifySongsDataSource } from "./Spotify/SpotifySongsDataSource";
 import SpotifyWebApi from "spotify-web-api-node";
+import { useSongContext } from "./SongContext";
 
 const APIController = {
   clientId: '177ead92a8e945a8a5803f19edd3db14',
@@ -77,9 +79,11 @@ const APIController = {
 };
 
 function SelectGenre() {
-  const [popularSongs, setPopularSongs] = useState<SpotifyApi.TrackObjectFull[]>([]);
+  const [popularSongs, setPopularSongs] = useState<string[] | null>([]);
   const [token, setToken] = useState<string | null>(null);
   const [genres, setGenres] = useState([]);
+  const { setSelectedSongs } = useSongContext();
+  const navigate = useNavigate();
 
 
   useEffect(() => {
@@ -113,12 +117,15 @@ function SelectGenre() {
       // The difficulty parameter affects song popularity (lower = less popular songs)
       //const songs = await spotifyHandler.getPopularSongsByGenre(genre.toLowerCase(), 5, 70);
       const songs = await spotifyHandler.getPlaylistByGenre(token, genre)
+      if (songs == null){ return;}
       
       // Update state with the retrieved songs
       setPopularSongs(songs);
+      setSelectedSongs(songs);
 
       // Log songs to console
       console.log(`Popular ${genre} Songs:`, songs);
+      navigate('/homepage');
     } catch (error) {
       console.error(`Error fetching ${genre} songs:`, error);
     }

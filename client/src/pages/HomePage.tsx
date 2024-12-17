@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import Stomp from 'stompjs';
 import SockJS from 'sockjs-client';
 import { Client, IMessage, IFrame } from '@stomp/stompjs';
 import { v4 as uuidv4 } from 'uuid'; // Import uuid for generating unique IDs
-
+import { useSongContext } from "../components/SongContext";
 
 // Set up WebSocket URL
 
@@ -11,6 +12,7 @@ const WEBSOCKET_URL = "http://18.118.254.198:8080/game-websocket";
 
 
 function HomePage(){
+  const { selectedSongs } = useSongContext();
   const [isConnected, setIsConnected] = useState(false);
   const [message, setMessage] = useState('');
   const [stompClient, setStompClient] = useState(null);
@@ -28,6 +30,22 @@ function HomePage(){
   const [canSubmit, setCanSubmit] = useState(true);
   const [waitingForOthers, setWaitingForOthers] = useState(false);
   console.log("HomePage mounted");
+  // useEffect(() => {
+  //   // Convert selected songs to question format for the game
+  //   if (selectedSongs && selectedSongs.length > 0 && stompClient) {
+  //     const songQuestions = selectedSongs.map(song => ({
+  //       questionText: `What is the name of this song?`,
+  //       options: selectedSongs.map(s => s), // Assuming the song object has a 'name' property
+  //       correctAnswer: song
+  //     }));
+  //     //setStompClient(stompClient);
+
+  //     // You might want to pass these to the GameController via WebSocket or modify the existing questions
+  //     sendMessage("/app/set-questions",songQuestions);
+  //     //stompClient.send("/app/set-questions", {}, JSON.stringify(songQuestions));
+  //     console.log("Song Questions:", songQuestions);
+  //   }
+  // }, [selectedSongs, stompClient]);
 
 
   
@@ -51,18 +69,56 @@ function HomePage(){
 
       client.subscribe('/topic/game', (message) => {
         try {
+          
+            // Convert selected songs to question format for the game
+            if (selectedSongs && selectedSongs.length > 0) {
+              //&& stompClient
+              
+              // const songQuestions = selectedSongs.map(song => ({
+              //   questionText: `What is the name of this song?`,
+              //   options: selectedSongs.map(s => s), // Assuming the song object has a 'name' property
+              //   correctAnswer: song
+              // }));
+              
+              /*
+              //if (data.type === "QUESTION"){
+                //const {options, questionText} = data.payload;
+                console.log("Parsed question", songQuestions[0].questionText);
+                setQuestion(songQuestions[0].questionText);
+                setOptions(Array.isArray(options) ? songQuestions[0].options : []);
+                setCanSubmit(true);
+                setWaitingForOthers(false);
+              //}
+              */
+              //setStompClient(stompClient);
+        
+              // You might want to pass these to the GameController via WebSocket or modify the existing questions
+              //sendMessage("/app/set-songs",selectedSongs);
+              client.send("/app/set-songs", {}, JSON.stringify(selectedSongs));
+              //console.log("Song Questions:", songQuestions);
+              console.log("Selected Songs:"+ selectedSongs)
+              
+            }
+          
           const data = JSON.parse(message.body);
           console.log("Received message:", data);
-          setMessage(data);
+
+          //setMessage(data);
+          //setMessage(songQuestions[0])
+          if (data.type === "SONGS_UPDATED") {
+            console.log("Songs have been updated in the game controller");
+          }
+          
           if (data.type === "QUESTION"){
             const {options, questionText} = data.payload;
+            
             console.log("Parsed question", questionText);
             setQuestion(questionText);
             setOptions(Array.isArray(options) ? options : []);
             setCanSubmit(true);
             setWaitingForOthers(false);
           }
-
+              
           if (data.type === "PLAYERS_READY"){
             
             console.log('Player readied up')
@@ -92,6 +148,12 @@ function HomePage(){
     
 
   });
+
+  if (selectedSongs && selectedSongs.length > 0 && isConnected) {
+    //&& isConnected
+    console.log("Sending songs to game controller:", selectedSongs);
+    client.send("/app/set-songs", {}, JSON.stringify(selectedSongs));
+  }
     return () => {
 
       if (clientRef.current) {
@@ -115,10 +177,11 @@ function HomePage(){
   const sendMessage = (destination: string, messageBody: any) => {
     if(isConnected){
       console.log('attempt29');
+      console.log(messageBody)
       stompClient.send(destination, {}, JSON.stringify(messageBody))
     
   } else {
-    console.log("websocket invalid")
+    console.log("websocket invalid for" + JSON.stringify(messageBody))
   }
 }
     
@@ -126,7 +189,12 @@ function HomePage(){
     
     if (isConnected) {
       console.log('connected')
+
+      sendMessage("/app/set-songs", selectedSongs);
+
+      console.log(selectedSongs)
       sendMessage("/app/start", { type: "START_GAME" });
+      
     } else {
       console.warn("Cannot start game. WebSocket is not connected.");
     }

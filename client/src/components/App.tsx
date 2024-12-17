@@ -3,7 +3,9 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-route
 //import GenreSelect from "./SelectGenera";
 import GenreSelect from "./SelectGenre";
 import HomePage from "../pages/HomePage";
+import { SongProvider } from "./SongContext";
 
+window.global = window;
 
 function Home() {
  const navigate = useNavigate();
@@ -38,6 +40,7 @@ function Home() {
 
 function App() {
  return (
+  <SongProvider>
    <Router>
      <Routes>
        <Route path="/" element={<Home />} />
@@ -45,6 +48,7 @@ function App() {
        <Route path="/homepage" element={<HomePage />} />
      </Routes>
    </Router>
+   </SongProvider>
  );
 } 
 

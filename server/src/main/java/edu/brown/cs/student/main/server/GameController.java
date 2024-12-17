@@ -43,6 +43,20 @@ public class GameController {
   private final Moshi moshi = new Moshi.Builder().build();
   private boolean gameStarted = false;
 
+    @MessageMapping("/set-questions")
+    public void setQuestions(List<Question> newQuestions) {
+        if (newQuestions != null && !newQuestions.isEmpty()) {
+            
+            this.questions = newQuestions;
+            console.log(newQuestions);
+            // Reset game state when new questions are set
+            currentQuestionIndex = 0;
+            playerScores.clear();
+            submittedPlayers.clear();
+        }
+    }
+
+    
   @Autowired
   public GameController(
       SimpMessagingTemplate messagingTemplate,
@@ -64,9 +78,55 @@ public class GameController {
     messagingTemplate.convertAndSend("/topic/game", new GameMessage("PLAYERS_READY", readyMessage));
   }
 
+  @MessageMapping("/set-songs")
+    public void setSongs(List<String> songs) {
+        // Convert incoming songs to Question objects
+        List<Question> songQuestions = songs.stream()
+            .map(song -> new Question(
+                "What is the name of this song?", 
+                songs,
+                song
+            ))
+            .collect(Collectors.toList());
+
+        // Update the questions list
+        this.questions = songQuestions;
+        
+        // Reset game state
+        currentQuestionIndex = 0;
+        playerScores.clear();
+        submittedPlayers.clear();
+
+        // Broadcast that songs have been updated
+        Map<String, Object> songsUpdateMessage = new HashMap<>();
+        songsUpdateMessage.put("type", "SONGS_UPDATED");
+        songsUpdateMessage.put("songCount", songQuestions.size());
+
+        messagingTemplate.convertAndSend("/topic/game", 
+            new GameMessage("SONGS_UPDATED", songsUpdateMessage));
+            }
+
+
+
   @MessageMapping("/start")
   @SendTo("/topic/game")
   public GameMessage startGame() {
+
+    if (questions == null || questions.isEmpty()) {
+            Map<String, Object> errorMessage = new HashMap<>();
+            errorMessage.put("type", "ERROR");
+            errorMessage.put("message", "No questions available. Please set questions first.");
+            return new GameMessage("ERROR", errorMessage);
+        }
+        public void setQuestions(List<Question> newQuestions) {
+        if (newQuestions != null && !newQuestions.isEmpty()) {
+            this.questions = newQuestions;
+            // Reset game state when new questions are set
+            currentQuestionIndex = 0;
+            playerScores.clear();
+            submittedPlayers.clear();
+        }
+    }
     if (!gameService.getReadyPlayers().isEmpty()
         && gameService.getReadyPlayers().size() == getActivePlayerCount()) {
       // Reset game state
@@ -78,6 +138,7 @@ public class GameController {
 
       if (currentQuestionIndex < questions.size()) {
         Question question = questions.get(currentQuestionIndex);
+
 
         Map<String, Object> questionMessage = new HashMap<>();
         questionMessage.put("type", "QUESTION");
