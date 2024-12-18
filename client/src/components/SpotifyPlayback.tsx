@@ -19,42 +19,63 @@ const SpotifyPlayback: React.FC<SpotifyPlaybackProps> = ({
 }) => {
   const [player, setPlayer] = useState<Spotify.Player | null>(null);
   const [playbackTimer, setPlaybackTimer] = useState<NodeJS.Timeout | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
   const startPlayback = useCallback(async () => {
-    if (!player || !trackUri) return;
+    if (!player || !trackUri || !deviceId) {
+        console.log('Missing requirements:', { 
+            hasPlayer: !!player, 
+            hasTrackUri: !!trackUri,
+            deviceId 
+        });
+        return;
+    }
 
     try {
-      const deviceId = await new Promise<string>((resolve) => {
-        player.getCurrentState().then(state => {
-          player.getVolume().then(volume => {
-            resolve(state?.device_id || '');
-          });
+        // Get fresh token from backend first
+        const tokenResponse = await fetch('http://localhost:8000/get-token');
+        if (!tokenResponse.ok) {
+            throw new Error('Failed to get access token');
+        }
+        const { accessToken } = await tokenResponse.json();
+
+        // Try to play with device ID
+        const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                uris: [trackUri],
+                position_ms: 0,
+            }),
         });
-      });
 
-      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer BQAWBia-9l73jlVro2StzcyJFKfryaltZpoNZtCKJbcaNu5GbOaTXEw1jOAuZTI00jev1JKQhzoN48akZanfBVZ5M8oREXrE-q-Ggdvl5JjnxVJ8syzmFpavhoM_0Wmb9r6ia_EMDjVJArCX5weciFlBc4pWPAaOomQa1lnNGWKuriXVsvYi_SGb1RBqWBLbcnAMhhNOxGS_tqAJsblJAKQWMlqcsIX7O45viC5zAg`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          uris: [trackUri],
-          position_ms: 0,
-        }),
-      });
+        console.log('Playback response:', response.status);
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Playback error details:', error);
+            throw new Error('Failed to start playback');
+        }
 
-      const timer = setTimeout(async () => {
-        await player.pause();
-        onPlaybackComplete?.();
-      }, playbackDuration);
+        // Set timer for playback duration
+        const timer = setTimeout(async () => {
+            try {
+                await player.pause();
+                onPlaybackComplete?.();
+            } catch (error) {
+                console.error('Error pausing playback:', error);
+            }
+        }, playbackDuration);
 
-      setPlaybackTimer(timer);
+        setPlaybackTimer(timer);
+
     } catch (error) {
-      console.error('Playback error:', error);
-      onError?.(error instanceof Error ? error : new Error('Playback failed'));
+        console.error('Playback error:', error);
+        onError?.(error instanceof Error ? error : new Error('Playback failed'));
     }
-  }, [player, trackUri, playbackDuration, onPlaybackComplete, onError]);
+  }, [player, trackUri, deviceId, playbackDuration, onPlaybackComplete, onError]);
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -64,66 +85,88 @@ const SpotifyPlayback: React.FC<SpotifyPlaybackProps> = ({
     document.body.appendChild(script);
 
     window.onSpotifyWebPlaybackSDKReady = () => {
-      const player = new window.Spotify.Player({
-        name: 'Chime In Game Player',
-        getOAuthToken: cb => {
-          const accessToken = 'BQAWBia-9l73jlVro2StzcyJFKfryaltZpoNZtCKJbcaNu5GbOaTXEw1jOAuZTI00jev1JKQhzoN48akZanfBVZ5M8oREXrE-q-Ggdvl5JjnxVJ8syzmFpavhoM_0Wmb9r6ia_EMDjVJArCX5weciFlBc4pWPAaOomQa1lnNGWKuriXVsvYi_SGb1RBqWBLbcnAMhhNOxGS_tqAJsblJAKQWMlqcsIX7O45viC5zAg';
-          cb(accessToken || '');
-        }
-      });
+        const player = new window.Spotify.Player({
+            name: 'Chime In Game Player',
+            getOAuthToken: async (cb) => {
+                try {
+                    const response = await fetch('http://localhost:8000/get-token');
+                    if (!response.ok) {
+                        throw new Error('Failed to get access token');
+                    }
+                    const data = await response.json();
+                    cb(data.accessToken);
+                } catch (error) {
+                    console.error('Error getting token:', error);
+                    onError?.(new Error('Failed to get access token'));
+                }
+            }
+        });
 
-      player.addListener('initialization_error', ({ message }) => {
-        console.error('Failed to initialize:', message);
-        onError?.(new Error(message));
-      });
+        player.addListener('initialization_error', ({ message }) => {
+            console.error('Failed to initialize:', message);
+            onError?.(new Error(message));
+        });
 
-      player.addListener('authentication_error', ({ message }) => {
-        console.error('Failed to authenticate:', message);
-        onError?.(new Error(message));
-      });
+        player.addListener('authentication_error', ({ message }) => {
+            console.error('Failed to authenticate:', message);
+            onError?.(new Error(message));
+        });
 
-      player.addListener('account_error', ({ message }) => {
-        console.error('Failed to validate Spotify account:', message);
-        onError?.(new Error(message));
-      });
+        player.addListener('account_error', ({ message }) => {
+            console.error('Failed to validate Spotify account:', message);
+            onError?.(new Error(message));
+        });
 
-      player.addListener('playback_error', ({ message }) => {
-        console.error('Failed to perform playback:', message);
-        onError?.(new Error(message));
-      });
+        player.addListener('playback_error', ({ message }) => {
+            console.error('Failed to perform playback:', message);
+            onError?.(new Error(message));
+        });
 
-      player.addListener('player_state_changed', (state) => {
-        onStateChange?.(state);
-      });
+        player.addListener('player_state_changed', (state) => {
+            console.log('Player state changed:', state);
+            onStateChange?.(state);
+        });
 
-      player.addListener('ready', ({ device_id }) => {
-        console.log('Ready with Device ID', device_id);
-        setPlayer(player);
-        onReady?.();
-      });
+        player.addListener('ready', ({ device_id }) => {
+            console.log('Player ready with Device ID:', device_id);
+            setDeviceId(device_id);
+            setPlayer(player);
+            onReady?.();
+        });
 
-      player.connect();
+        player.addListener('not_ready', ({ device_id }) => {
+            console.log('Device ID has gone offline:', device_id);
+            setDeviceId(null);
+        });
+
+        player.connect().then(success => {
+            if (!success) {
+                console.error('Failed to connect to Spotify');
+            } else {
+                console.log('Successfully connected to Spotify');
+            }
+        });
     };
 
     return () => {
-      if (playbackTimer) {
-        clearTimeout(playbackTimer);
-      }
-      if (player) {
-        player.disconnect();
-      }
-      document.body.removeChild(script);
+        if (playbackTimer) {
+            clearTimeout(playbackTimer);
+        }
+        if (player) {
+            player.disconnect();
+        }
+        document.body.removeChild(script);
     };
-  }, []);
+  }, [onError, onReady, onStateChange]);
 
   useEffect(() => {
     if (playbackTimer) {
       clearTimeout(playbackTimer);
     }
-    if (player && trackUri) {
+    if (player && trackUri && deviceId) {
       startPlayback();
     }
-  }, [player, trackUri, startPlayback]);
+  }, [player, trackUri, deviceId, startPlayback, playbackTimer]);
 
   return null;
 };
