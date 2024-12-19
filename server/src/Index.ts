@@ -11,7 +11,8 @@ export const app = express();
 app.use(cors({
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 const spotifyHandler = new SpotifyHandler();
@@ -29,7 +30,17 @@ const healthCheck: RequestHandler = (_req, res) => {
 
 const login: RequestHandler = (_req, res) => {
   try {
-    const scopes = ['playlist-read-private', 'playlist-read-collaborative ','user-read-playback-state','user-modify-playback-state','user-read-currently-playing','app-remote-control','streaming'];
+    const scopes = [
+      'playlist-read-private',
+      'playlist-read-collaborative',
+      'user-read-playback-state',
+      'user-modify-playback-state',
+      'user-read-currently-playing',
+      'app-remote-control',
+      'streaming',
+      'user-read-email',
+      'user-read-private'
+    ];
     const state = Math.random().toString(36).substring(7);
     const authorizeURL = spotifyHandler.spotifyApi.createAuthorizeURL(scopes, state);
     
@@ -157,6 +168,21 @@ const getPlaylistTracks: RequestHandler = async (req, res) => {
     });
   }
 };
+
+// Add this near your other endpoints
+app.get('/get-token', (req, res) => {
+  try {
+    const accessToken = spotifyHandler.spotifyApi.getAccessToken();
+    if (!accessToken) {
+      res.status(401).json({ error: 'No access token available' });
+      return;
+    }
+    res.json({ accessToken });
+  } catch (error) {
+    console.error('Error getting token:', error);
+    res.status(500).json({ error: 'Failed to get access token' });
+  }
+});
 
 app.get('/', healthCheck);
 app.get('/login', login);

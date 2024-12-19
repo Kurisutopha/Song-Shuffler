@@ -63,7 +63,7 @@ const Game: React.FC = () => {
         if (trackData.length === 0) {
           throw new Error('No tracks found in this playlist.');
         }
-        
+        console.log(trackData);
         setTracks(trackData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load tracks');
@@ -96,7 +96,7 @@ const Game: React.FC = () => {
     setShowAnswer(true);
     setTimeout(() => {
       setShowAnswer(false);
-      setTimeLeft(30);
+      setTimeLeft(10);
       setGuess('');
       setCurrentTrackIndex(prev => prev + 1);
       if (currentTrackIndex < tracks.length - 1) {

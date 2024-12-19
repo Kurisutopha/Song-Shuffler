@@ -1,7 +1,7 @@
 import "../styles/App.css";
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 //import GenreSelect from "./SelectGenera";
-import GenreSelect from "./SelectGenre";
+//import GenreSelect from "./SelectGenre";
 import HomePage from "../pages/HomePage";
 import { SongProvider } from "./SongContext";
 import { AuthProvider } from './AuthContext';
@@ -10,15 +10,16 @@ import { Layout, MainHeading, Card } from './StyledComponents';
 import PlaylistInput from './PlaylistInput';
 
 
-window.global = window;
+//window.global = window;
 
 function Home() {
- const navigate = useNavigate();
+ //const navigate = useNavigate();
 
-
+/*
  const handleStart = () => {
    navigate('/select-genre');
  };
+ */
 /*
  const handleStart = () => {
   navigate('/homepage');
@@ -29,9 +30,9 @@ function Home() {
   return (
     <Layout>
       <MainHeading>Welcome to Chime In</MainHeading>
-      <button className="start-button" onClick={handleStart}>
+      {/*<button className="start-button" onClick={handleStart}>
          Start
-       </button>
+       </button>*/}
       <Card>
         <PlaylistInput />
         <p className="text-gray-300 mt-6 text-center leading-relaxed">
@@ -46,61 +47,19 @@ function Home() {
 
 function App() {
  return (
-  <SongProvider>
+  
    <Router>
    <AuthProvider>
      <Routes>
        <Route path="/" element={<Home />} />
-       <Route path="/select-genre" element={<GenreSelect />} />
+       <Route path="/game" element={<Game />} />
+       {/*<Route path="/select-genre" element={<GenreSelect />} />*/}
        <Route path="/homepage" element={<HomePage />} />
      </Routes>
      </AuthProvider>
    </Router>
-   </SongProvider>
+   
  );
 } 
 
-
-
-/*
-window.global = window;
-
-
-function Home() {
-  const navigate = useNavigate();
-
-  const handleStart = () => {
-    navigate('/homepage');
-  };
-
-  return (
-    <div className="App">
-      <div className="app">
-        <h1 className="title">Welcome to Chime In</h1>
-        <button className="start-button" onClick={handleStart}>
-          Start
-        </button>
-        <p className="rules">
-          Rules of the game: Press start and select a genre of music, the game will play a snippet 
-          of a random song 10 times. Guess the songs to win a point and link your spotify to add 
-          them to your playlists!
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/select-genre" element={<GenreSelect />} />
-        <Route path="/homepage" element={<HomePage />} />
-
-      </Routes>
-    </Router>
-  );
-}
-*/
 export default App;

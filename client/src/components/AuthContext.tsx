@@ -56,6 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkAuthStatus = async () => {
     try {
       const response = await fetch('http://localhost:8000/auth-status');
+      if (!response.ok){
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setIsAuthenticated(data.isAuthenticated);
       
@@ -79,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting to connect to Spotify...');
       const response = await fetch('http://localhost:8000/login');
+      console.log(response)
       const data = await response.json();
       
       const width = 450;
