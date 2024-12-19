@@ -107,9 +107,25 @@ const Game: React.FC = () => {
 
   const startGame = () => {
     setGameStarted(true);
-    setIsPlaying(true);
+    setTimeLeft(30);
+    setTimeout(() => {
+      setIsPlaying(true);
+    }, 1000);
   };
 
+  const handleSkip = useCallback(() => {
+    if (skipsRemaining > 0) {
+      setIsPlaying(false);
+      setSkipsRemaining(prev => prev - 1);
+      setTimeLeft(30);
+      
+      setTimeout(() => {
+        setCurrentTrackIndex(prev => prev + 1);
+        setIsPlaying(true);
+      }, 500);
+    }
+  }, [skipsRemaining]);
+  
   const handleGuess = () => {
     const currentTrack = tracks[currentTrackIndex];
     const isCorrect = 
@@ -117,7 +133,7 @@ const Game: React.FC = () => {
       currentTrack.artists.some(artist => 
         guess.toLowerCase() === artist.name.toLowerCase()
       );
-
+  
     if (isCorrect) {
       const timeBonus = Math.floor(timeLeft / 5);
       setScore(score + 10 + timeBonus);
@@ -190,14 +206,9 @@ const Game: React.FC = () => {
           />
 
           <GamePlayer 
-            trackUri={tracks[currentTrackIndex]?.uri}
+            trackUri={gameStarted ? tracks[currentTrackIndex]?.uri : undefined}
             isPlaying={isPlaying}
-            onSkip={() => {
-              if (skipsRemaining > 0) {
-                setSkipsRemaining(prev => prev - 1);
-                setCurrentTrackIndex(prev => prev + 1);
-              }
-            }}
+            onSkip={handleSkip}
             skipsRemaining={skipsRemaining}
             timeLeft={timeLeft}
             disabled={showAnswer}
