@@ -129,12 +129,20 @@ const Game: React.FC = () => {
     fetchTracks();
   }, [location.state, navigate]);
 
+  const timeupCalled = useRef(false);
+
   useEffect(() => {
-    if (!gameStarted || showAnswer) return;
+    if (!gameStarted || showAnswer) {
+      timeupCalled.current = false;
+      return;
+
+    }
 
     const timer = setInterval(() => {
       setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
+        if (prevTime <= 1 && !timeupCalled.current) {
+          timeupCalled.current = true;
+          //clearInterval(timer);
           handleTimeUp();
           return 0;
         }
@@ -148,21 +156,31 @@ const Game: React.FC = () => {
   const handleTimeUp = useCallback(() => {
     setIsPlaying(false);
     setShowAnswer(true);
-    setTimeout(() => {
+
+    const nextTrackTimeout = setTimeout(() => {
       setShowAnswer(false);
       setTimeLeft(30);
       setGuess('');
-      setCurrentTrackIndex(prev => prev + 1);
-      if (currentTrackIndex < tracks.length - 1) {
+      timeupCalled.current = false;
+      setIsPlaying(true);
+      
+      setCurrentTrackIndex(prev => {
+      if (prev < tracks.length - 1) {
         setIsPlaying(true);
       }
+      return prev + 1;
+    });
     }, 1000);
-  }, [currentTrackIndex, tracks.length]);
+    //setCurrentTrackIndex(prev => prev + 1)
+
+    return () => clearTimeout(nextTrackTimeout);
+  }, [tracks.length]);
 
   const startGame = () => {
     setTimeout(() => {
       setIsPlaying(false);
     }, 500);
+    
     setGameStarted(true);
     setTimeLeft(30);
     setTimeout(() => {
@@ -174,12 +192,13 @@ const Game: React.FC = () => {
     if (skipsRemaining > 0) {
       setIsPlaying(false);
       setSkipsRemaining(prev => prev - 1);
+      setCurrentTrackIndex(prev => prev + 1)
       setTimeLeft(30);
       
       setTimeout(() => {
-        setCurrentTrackIndex(prev => prev + 1);
+        
         setIsPlaying(true);
-      }, 500);
+      }, 1000);
     }
   }, [skipsRemaining]);
   
@@ -231,7 +250,7 @@ const Game: React.FC = () => {
     );
   }
 
-  if (currentTrackIndex >= tracks.length) {
+  if (currentTrackIndex + skipsRemaining >= tracks.length) {
     return (
       <Layout>
         <Card>
