@@ -217,7 +217,7 @@ const Game: React.FC = () => {
       setShowAnswer(true);
       setTimeout(() => {
         setShowAnswer(false);
-        setTimeLeft(10);
+        setTimeLeft(30);
         setGuess('');
         setCurrentTrackIndex(prev => prev + 1);
         if (currentTrackIndex < tracks.length - 1) {
