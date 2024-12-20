@@ -24,7 +24,7 @@ const Game: React.FC = () => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [gameStarted, setGameStarted] = useState(true);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
   const [skipsRemaining, setSkipsRemaining] = useState(5);
   const [filteredSuggestions, setFilteredSuggestions] = useState<Track[]>([]); // New state for filtered suggestions
   const [showDropdown, setShowDropdown] = useState(true); 
@@ -105,7 +105,7 @@ const Game: React.FC = () => {
       try {
         const response = await fetch(
           `http://localhost:8000/api/playlist-tracks?` +
-          `url=${encodeURIComponent(playlistUrl)}&count=10`
+          `url=${encodeURIComponent(playlistUrl)}&count=15`
         );
         
         if (!response.ok) {
@@ -156,10 +156,13 @@ const Game: React.FC = () => {
       if (currentTrackIndex < tracks.length - 1) {
         setIsPlaying(true);
       }
-    }, 3000);
+    }, 1000);
   }, [currentTrackIndex, tracks.length]);
 
   const startGame = () => {
+    setTimeout(() => {
+      setIsPlaying(false);
+    }, 500);
     setGameStarted(true);
     setTimeLeft(30);
     setTimeout(() => {
@@ -195,13 +198,13 @@ const Game: React.FC = () => {
       setShowAnswer(true);
       setTimeout(() => {
         setShowAnswer(false);
-        setTimeLeft(30);
+        setTimeLeft(10);
         setGuess('');
         setCurrentTrackIndex(prev => prev + 1);
         if (currentTrackIndex < tracks.length - 1) {
           setIsPlaying(true);
         }
-      }, 3000);
+      }, 1000);
     }
   };
 
