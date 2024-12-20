@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { Layout, Card, Button, Input, Alert, ScoreDisplay, GameProgress } from './StyledComponents';
@@ -22,10 +22,64 @@ const Game: React.FC = () => {
   const [score, setScore] = useState(0);
   const [guess, setGuess] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
+  const [gameStarted, setGameStarted] = useState(true);
   const [timeLeft, setTimeLeft] = useState(30);
   const [isPlaying, setIsPlaying] = useState(false);
   const [skipsRemaining, setSkipsRemaining] = useState(5);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<Track[]>([]); // New state for filtered suggestions
+  const [showDropdown, setShowDropdown] = useState(true); 
+  // Toggle dropdown visibility
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    
+    const input = e.target.value;
+    setGuess(input);
+    
+    setShowDropdown(true);
+    if (input.trim() === '') {
+      setShowDropdown(false);
+      setFilteredSuggestions([]);
+
+      return;
+    }
+
+    console.log(tracks);
+
+    const suggestions = tracks
+      .filter((track) => {
+        const trackName = track.name.toLowerCase();
+        const artistNames = track.artists.map(artist => artist.name.toLowerCase());
+        const inputLower = input.toLowerCase();
+        
+        return trackName.includes(inputLower) || 
+               artistNames.some(name => name.includes(inputLower));
+      })
+      .slice(0, 5);
+    
+      console.log(suggestions);
+
+    setFilteredSuggestions(suggestions);
+    setShowDropdown(true);
+  };
+
+  const handleSuggestionClick = (suggestion: Track) => {
+    setGuess(suggestion.name);
+    setShowDropdown(false); // Hide dropdown after selection
+  };
+
 
   useEffect(() => {
     const isPageRefresh = (
@@ -217,10 +271,27 @@ const Game: React.FC = () => {
           <div className="space-y-4 mt-6">
             <Input
               value={guess}
-              onChange={(e) => setGuess(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Enter song title or artist name..."
               disabled={showAnswer}
             />
+
+{showDropdown && filteredSuggestions.length > 0 && (
+    <div className="absolute z-10 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+      {filteredSuggestions.map((suggestion) => (
+        <div
+          key={suggestion.id}
+          className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-white"
+          onClick={() => handleSuggestionClick(suggestion)}
+        >
+          <div className="font-medium">{suggestion.name}</div>
+          <div className="text-sm text-gray-400">
+            {suggestion.artists.map(a => a.name).join(', ')}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
 
             <Button
               onClick={handleGuess}
