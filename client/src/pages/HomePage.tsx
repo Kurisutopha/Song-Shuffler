@@ -161,42 +161,56 @@ function HomePage(){
   };
 
   return (
-    <div>
-      <h1>Game with React + WebSocket</h1>
-      <h3>Player ID:{playerId}</h3>
-      <button onClick={handleGameStart} disabled={!isConnected}>
-        Start Game
-      </button>
-      <button onClick = {handleReadyUp}>
-        Ready Up
-      </button>
-      <h3>Your Current Score: {score}</h3>
-      {waitingForOthers && <p>Waiting for other players to submit...</p>}
-      
-      <div>
-        <h4>Current Question:</h4>
-        <p>{question}</p>
-        <div>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
+      <div className="w-full max-w-3xl px-6 py-8 bg-gray-800 rounded-lg shadow-md">
+        <h1 className="text-3xl font-bold mb-6 text-center">React WebSocket Game</h1>
+        <h3 className="text-xl mb-4">Player ID: <span className="text-green-400">{playerId}</span></h3>
+        <div className="mb-6 text-center">
+          <h3 className="text-2xl font-semibold mb-2">Your Current Score: <span className="text-green-500">{score}</span></h3>
+          {waitingForOthers && <p className="text-yellow-300">Waiting for other players to submit...</p>}
+        </div>
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold">Current Question:</h4>
+          <p className="text-gray-300">{question}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-6">
           {options.map((option, index) => (
             <button
               key={index}
               onClick={() => setSelectedOption(option)}
               disabled={!canSubmit}
-              style={{
-                backgroundColor: selectedOption === option ? "blue" : "white",
-                opacity: canSubmit ? 1 : 0.5
-              }}
+              className={`px-4 py-2 rounded-lg font-medium ${
+                selectedOption === option
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              } ${!canSubmit ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {option}
             </button>
           ))}
         </div>
-        <button 
-          onClick={handleSubmit} 
-          disabled={!canSubmit || !selectedOption}
-        >
-          Submit Answer
-        </button>
+        <div className="flex space-x-4">
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit || !selectedOption}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Submit Answer
+          </button>
+          <button
+            onClick={handleGameStart}
+            disabled={!isConnected}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Start Game
+          </button>
+          <button
+            onClick={handleReadyUp}
+            className="px-6 py-2 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-500"
+          >
+            Ready Up
+          </button>
+        </div>
       </div>
     </div>
   );

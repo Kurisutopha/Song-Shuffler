@@ -1,4 +1,3 @@
-import "../styles/App.css";
 
 function SelectGenre() {
   return (

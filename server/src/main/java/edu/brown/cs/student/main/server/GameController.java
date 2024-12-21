@@ -29,15 +29,46 @@ public class GameController {
 
   private List<Question> questions =
       List.of(
-          new Question("What is 2 + 2?", List.of("3", "4", "5", "6"), "4"),
           new Question(
-              "What is the capital of France?",
-              List.of("Paris", "London", "Berlin", "Rome"),
-              "Paris"),
+              "Guess the song title:",
+              List.of(
+                  "Shape of You - Ed Sheeran",
+                  "Blinding Lights - The Weeknd",
+                  "Hello - Adele",
+                  "Bohemian Rhapsody - Queen"),
+              "Blinding Lights - The Weeknd"),
           new Question(
-              "Which color is created by mixing red and yellow?",
-              List.of("Green", "Orange", "Blue", "Purple"),
-              "Orange"));
+              "Guess the song title:",
+              List.of(
+                  "Rolling in the Deep - Adele",
+                  "Someone Like You - Adele",
+                  "Uptown Funk - Mark Ronson ft. Bruno Mars",
+                  "Shallow - Lady Gaga & Bradley Cooper"),
+              "Rolling in the Deep - Adele"),
+          new Question(
+              "Guess the song title:",
+              List.of(
+                  "Stay - Justin Bieber & The Kid LAROI",
+                  "Perfect - Ed Sheeran",
+                  "Happier Than Ever - Billie Eilish",
+                  "Bad Guy - Billie Eilish"),
+              "Stay - Justin Bieber & The Kid LAROI"),
+          new Question(
+              "Guess the song title:",
+              List.of(
+                  "Imagine - John Lennon",
+                  "Smells Like Teen Spirit - Nirvana",
+                  "Hotel California - Eagles",
+                  "Wonderwall - Oasis"),
+              "Hotel California - Eagles"),
+          new Question(
+              "Guess the song title:",
+              List.of(
+                  "Levitating - Dua Lipa",
+                  "As It Was - Harry Styles",
+                  "Peaches - Justin Bieber",
+                  "Good 4 U - Olivia Rodrigo"),
+              "Levitating - Dua Lipa"));
 
   private int currentQuestionIndex = 0;
   private final Moshi moshi = new Moshi.Builder().build();
