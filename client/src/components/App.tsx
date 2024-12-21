@@ -34,4 +34,17 @@ function App() {
   );
 }
 
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/select-genre" element={<GenreSelect />} />
+        <Route path="/homepage" element={<HomePage />} />
+
+      </Routes>
+    </Router>
+  );
+}
+
 export default App;
