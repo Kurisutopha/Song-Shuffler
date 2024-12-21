@@ -26,11 +26,26 @@ const Game: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [isPlaying, setIsPlaying] = useState(true);
   const [skipsRemaining, setSkipsRemaining] = useState(5);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<Track[]>([]); // New state for filtered suggestions
-  const [showDropdown, setShowDropdown] = useState(true); 
-  // Toggle dropdown visibility
+  const [filteredSuggestions, setFilteredSuggestions] = useState<Track[]>([]);
+  const [showDropdown, setShowDropdown] = useState(true);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Only redirect if there's no playlist URL
+    if (!location.state?.playlistUrl) {
+      console.log('No playlist URL found, redirecting to home...');
+      navigate('/');
+      return;
+    }
+
+    // Check auth status separately
+    if (!isAuthenticated) {
+      console.log('Not authenticated, redirecting to home...');
+      navigate('/');
+      return;
+    }
+  }, [location.state, isAuthenticated, navigate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,7 +59,6 @@ const Game: React.FC = () => {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    
     const input = e.target.value;
     setGuess(input);
     
@@ -52,11 +66,8 @@ const Game: React.FC = () => {
     if (input.trim() === '') {
       setShowDropdown(false);
       setFilteredSuggestions([]);
-
       return;
     }
-
-    console.log(tracks);
 
     const suggestions = tracks
       .filter((track) => {
@@ -68,8 +79,6 @@ const Game: React.FC = () => {
                artistNames.some(name => name.includes(inputLower));
       })
       .slice(0, 5);
-    
-      console.log(suggestions);
 
     setFilteredSuggestions(suggestions);
     setShowDropdown(true);
@@ -77,29 +86,12 @@ const Game: React.FC = () => {
 
   const handleSuggestionClick = (suggestion: Track) => {
     setGuess(suggestion.name);
-    setShowDropdown(false); // Hide dropdown after selection
+    setShowDropdown(false);
   };
-
-
-  useEffect(() => {
-    const isPageRefresh = (
-      window.performance &&
-      window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD
-    );
-
-    if (isPageRefresh || !isAuthenticated) {
-      console.log('Invalid game state or page refreshed, redirecting to home...');
-      navigate('/');
-      return;
-    }
-  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     const playlistUrl = location.state?.playlistUrl;
-    if (!playlistUrl) {
-      navigate('/');
-      return;
-    }
+    if (!playlistUrl) return;
 
     const fetchTracks = async () => {
       try {
@@ -127,7 +119,7 @@ const Game: React.FC = () => {
     };
 
     fetchTracks();
-  }, [location.state, navigate]);
+  }, [location.state]);
 
   const timeupCalled = useRef(false);
 
@@ -135,14 +127,12 @@ const Game: React.FC = () => {
     if (!gameStarted || showAnswer) {
       timeupCalled.current = false;
       return;
-
     }
 
     const timer = setInterval(() => {
       setTimeLeft((prevTime) => {
         if (prevTime <= 1 && !timeupCalled.current) {
           timeupCalled.current = true;
-          //clearInterval(timer);
           handleTimeUp();
           return 0;
         }
@@ -165,13 +155,12 @@ const Game: React.FC = () => {
       setIsPlaying(true);
       
       setCurrentTrackIndex(prev => {
-      if (prev < tracks.length - 1) {
-        setIsPlaying(true);
-      }
-      return prev + 1;
-    });
+        if (prev < tracks.length - 1) {
+          setIsPlaying(true);
+        }
+        return prev + 1;
+      });
     }, 1000);
-    //setCurrentTrackIndex(prev => prev + 1)
 
     return () => clearTimeout(nextTrackTimeout);
   }, [tracks.length]);
@@ -192,11 +181,10 @@ const Game: React.FC = () => {
     if (skipsRemaining > 0) {
       setIsPlaying(false);
       setSkipsRemaining(prev => prev - 1);
-      setCurrentTrackIndex(prev => prev + 1)
+      setCurrentTrackIndex(prev => prev + 1);
       setTimeLeft(30);
       
       setTimeout(() => {
-        
         setIsPlaying(true);
       }, 1000);
     }
@@ -298,22 +286,22 @@ const Game: React.FC = () => {
               disabled={showAnswer}
             />
 
-{showDropdown && filteredSuggestions.length > 0 && (
-    <div className="absolute z-10 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-      {filteredSuggestions.map((suggestion) => (
-        <div
-          key={suggestion.id}
-          className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-white"
-          onClick={() => handleSuggestionClick(suggestion)}
-        >
-          <div className="font-medium">{suggestion.name}</div>
-          <div className="text-sm text-gray-400">
-            {suggestion.artists.map(a => a.name).join(', ')}
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
+            {showDropdown && filteredSuggestions.length > 0 && (
+              <div className="absolute z-10 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                {filteredSuggestions.map((suggestion) => (
+                  <div
+                    key={suggestion.id}
+                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-white"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                    <div className="font-medium">{suggestion.name}</div>
+                    <div className="text-sm text-gray-400">
+                      {suggestion.artists.map(a => a.name).join(', ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <Button
               onClick={handleGuess}

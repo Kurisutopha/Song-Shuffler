@@ -8,8 +8,10 @@ const PlaylistInput: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-    const { isAuthenticated, handleAuth } = useAuth();
+    const { isAuthenticated, handleAuth, setIsAuthenticated } = useAuth();
 
+
+    
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isAuthenticated) {
@@ -20,33 +22,37 @@ const PlaylistInput: React.FC = () => {
             }
             return;
         }
-
+    
         setError(null);
         setIsLoading(true);
-
-        const playlistMatch = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
-        if (!playlistMatch && !playlistUrl.match(/^[a-zA-Z0-9]{22}$/)) {
-            setError('Invalid playlist URL format. Please enter a valid Spotify playlist URL.');
-            setIsLoading(false);
-            return;
-        }
-
+    
         try {
+            // First verify we still have a valid token
+            const authResponse = await fetch('http://localhost:8000/auth-status');
+            const authData = await authResponse.json();
+            
+            if (!authData.isAuthenticated) {
+                setError('Session expired. Please authenticate again.');
+                setIsAuthenticated(false);
+                setIsLoading(false);
+                return;
+            }
+    
             const response = await fetch(
                 `http://localhost:8000/api/playlist-tracks?` + 
                 `url=${encodeURIComponent(playlistUrl)}&count=1`
             );
-
+    
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to load playlist');
             }
-
+    
             const data = await response.json();
             if (!data || data.length === 0) {
                 throw new Error('No playable tracks found in playlist');
             }
-
+    
             navigate('/game', { state: { playlistUrl } });
         } catch (err) {
             console.error('Error:', err);

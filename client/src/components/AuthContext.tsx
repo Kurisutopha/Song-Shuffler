@@ -33,23 +33,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    const handleRefresh = () => {
+    const handleRefresh = async () => {
       const isPageRefresh = (
         window.performance &&
         window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD
       );
-
+  
       if (isPageRefresh) {
-        console.log('Page was refreshed, clearing auth state...');
-        setIsAuthenticated(false);
-        localStorage.removeItem('spotify_access_token');
-        
-        if (location.pathname !== '/') {
-          navigate('/');
+        console.log('Page was refreshed, checking auth status...');
+        try {
+          const response = await fetch('http://localhost:8000/auth-status');
+          const data = await response.json();
+          
+          if (!data.isAuthenticated) {
+            console.log('Session invalid, clearing auth state...');
+            setIsAuthenticated(false);
+            localStorage.removeItem('spotify_access_token');
+            
+            if (location.pathname !== '/') {
+              navigate('/');
+            }
+          } else {
+            setIsAuthenticated(true);
+          }
+        } catch (err) {
+          console.error('Auth check failed:', err);
+          setIsAuthenticated(false);
+          if (location.pathname !== '/') {
+            navigate('/');
+          }
         }
       }
     };
-
+  
     handleRefresh();
   }, [navigate, location]);
 

@@ -158,14 +158,27 @@ const getPlaylistTracks: RequestHandler = async (req, res) => {
   }
 
   try {
+    // First verify the token is still valid
+    if (!spotifyHandler.hasValidToken()) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
     const tracks = await spotifyHandler.getTracksFromPlaylist(playlistUrl, count);
     res.json(tracks);
   } catch (error) {
     console.error('Error in /api/playlist-tracks:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch tracks',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    if (error instanceof Error && error.message.includes('authentication')) {
+      res.status(401).json({ 
+        error: 'Authentication failed',
+        message: error.message 
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Failed to fetch tracks',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 };
 
