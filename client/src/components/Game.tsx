@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { Layout, Card, Button, Input, Alert, ScoreDisplay, GameProgress } from './StyledComponents';
@@ -22,36 +22,82 @@ const Game: React.FC = () => {
   const [score, setScore] = useState(0);
   const [guess, setGuess] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
+  const [gameStarted, setGameStarted] = useState(true);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
   const [skipsRemaining, setSkipsRemaining] = useState(5);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<Track[]>([]);
+  const [showDropdown, setShowDropdown] = useState(true);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const isPageRefresh = (
-      window.performance &&
-      window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD
-    );
-
-    if (isPageRefresh || !isAuthenticated) {
-      console.log('Invalid game state or page refreshed, redirecting to home...');
+    // Only redirect if there's no playlist URL
+    if (!location.state?.playlistUrl) {
+      console.log('No playlist URL found, redirecting to home...');
       navigate('/');
       return;
     }
-  }, [isAuthenticated, navigate]);
+
+    // Check auth status separately
+    if (!isAuthenticated) {
+      console.log('Not authenticated, redirecting to home...');
+      navigate('/');
+      return;
+    }
+  }, [location.state, isAuthenticated, navigate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    setGuess(input);
+    
+    setShowDropdown(true);
+    if (input.trim() === '') {
+      setShowDropdown(false);
+      setFilteredSuggestions([]);
+      return;
+    }
+
+    const suggestions = tracks
+      .filter((track) => {
+        const trackName = track.name.toLowerCase();
+        const artistNames = track.artists.map(artist => artist.name.toLowerCase());
+        const inputLower = input.toLowerCase();
+        
+        return trackName.includes(inputLower) || 
+               artistNames.some(name => name.includes(inputLower));
+      })
+      .slice(0, 5);
+
+    setFilteredSuggestions(suggestions);
+    setShowDropdown(true);
+  };
+
+  const handleSuggestionClick = (suggestion: Track) => {
+    setGuess(suggestion.name);
+    setShowDropdown(false);
+  };
 
   useEffect(() => {
     const playlistUrl = location.state?.playlistUrl;
-    if (!playlistUrl) {
-      navigate('/');
-      return;
-    }
+    if (!playlistUrl) return;
 
     const fetchTracks = async () => {
       try {
         const response = await fetch(
           `http://localhost:8000/api/playlist-tracks?` +
-          `url=${encodeURIComponent(playlistUrl)}&count=10`
+          `url=${encodeURIComponent(playlistUrl)}&count=15`
         );
         
         if (!response.ok) {
@@ -73,14 +119,20 @@ const Game: React.FC = () => {
     };
 
     fetchTracks();
-  }, [location.state, navigate]);
+  }, [location.state]);
+
+  const timeupCalled = useRef(false);
 
   useEffect(() => {
-    if (!gameStarted || showAnswer) return;
+    if (!gameStarted || showAnswer) {
+      timeupCalled.current = false;
+      return;
+    }
 
     const timer = setInterval(() => {
       setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
+        if (prevTime <= 1 && !timeupCalled.current) {
+          timeupCalled.current = true;
           handleTimeUp();
           return 0;
         }
@@ -94,22 +146,50 @@ const Game: React.FC = () => {
   const handleTimeUp = useCallback(() => {
     setIsPlaying(false);
     setShowAnswer(true);
-    setTimeout(() => {
+
+    const nextTrackTimeout = setTimeout(() => {
       setShowAnswer(false);
       setTimeLeft(30);
       setGuess('');
-      setCurrentTrackIndex(prev => prev + 1);
-      if (currentTrackIndex < tracks.length - 1) {
-        setIsPlaying(true);
-      }
-    }, 3000);
-  }, [currentTrackIndex, tracks.length]);
+      timeupCalled.current = false;
+      setIsPlaying(true);
+      
+      setCurrentTrackIndex(prev => {
+        if (prev < tracks.length - 1) {
+          setIsPlaying(true);
+        }
+        return prev + 1;
+      });
+    }, 1000);
+
+    return () => clearTimeout(nextTrackTimeout);
+  }, [tracks.length]);
 
   const startGame = () => {
+    setTimeout(() => {
+      setIsPlaying(false);
+    }, 500);
+    
     setGameStarted(true);
-    setIsPlaying(true);
+    setTimeLeft(30);
+    setTimeout(() => {
+      setIsPlaying(true);
+    }, 1000);
   };
 
+  const handleSkip = useCallback(() => {
+    if (skipsRemaining > 0) {
+      setIsPlaying(false);
+      setSkipsRemaining(prev => prev - 1);
+      setCurrentTrackIndex(prev => prev + 1);
+      setTimeLeft(30);
+      
+      setTimeout(() => {
+        setIsPlaying(true);
+      }, 1000);
+    }
+  }, [skipsRemaining]);
+  
   const handleGuess = () => {
     const currentTrack = tracks[currentTrackIndex];
     const isCorrect = 
@@ -117,7 +197,7 @@ const Game: React.FC = () => {
       currentTrack.artists.some(artist => 
         guess.toLowerCase() === artist.name.toLowerCase()
       );
-
+  
     if (isCorrect) {
       const timeBonus = Math.floor(timeLeft / 5);
       setScore(score + 10 + timeBonus);
@@ -131,7 +211,7 @@ const Game: React.FC = () => {
         if (currentTrackIndex < tracks.length - 1) {
           setIsPlaying(true);
         }
-      }, 3000);
+      }, 1000);
     }
   };
 
@@ -158,7 +238,7 @@ const Game: React.FC = () => {
     );
   }
 
-  if (currentTrackIndex >= tracks.length) {
+  if (currentTrackIndex + skipsRemaining >= tracks.length) {
     return (
       <Layout>
         <Card>
@@ -190,14 +270,9 @@ const Game: React.FC = () => {
           />
 
           <GamePlayer 
-            trackUri={tracks[currentTrackIndex]?.uri}
+            trackUri={gameStarted ? tracks[currentTrackIndex]?.uri : undefined}
             isPlaying={isPlaying}
-            onSkip={() => {
-              if (skipsRemaining > 0) {
-                setSkipsRemaining(prev => prev - 1);
-                setCurrentTrackIndex(prev => prev + 1);
-              }
-            }}
+            onSkip={handleSkip}
             skipsRemaining={skipsRemaining}
             timeLeft={timeLeft}
             disabled={showAnswer}
@@ -206,10 +281,27 @@ const Game: React.FC = () => {
           <div className="space-y-4 mt-6">
             <Input
               value={guess}
-              onChange={(e) => setGuess(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Enter song title or artist name..."
               disabled={showAnswer}
             />
+
+            {showDropdown && filteredSuggestions.length > 0 && (
+              <div className="absolute z-10 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                {filteredSuggestions.map((suggestion) => (
+                  <div
+                    key={suggestion.id}
+                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-white"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                    <div className="font-medium">{suggestion.name}</div>
+                    <div className="text-sm text-gray-400">
+                      {suggestion.artists.map(a => a.name).join(', ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <Button
               onClick={handleGuess}

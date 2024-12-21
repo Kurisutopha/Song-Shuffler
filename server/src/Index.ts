@@ -11,7 +11,8 @@ export const app = express();
 app.use(cors({
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 const spotifyHandler = new SpotifyHandler();
@@ -29,7 +30,17 @@ const healthCheck: RequestHandler = (_req, res) => {
 
 const login: RequestHandler = (_req, res) => {
   try {
-    const scopes = ['playlist-read-private', 'playlist-read-collaborative'];
+    const scopes = [
+      'playlist-read-private',
+      'playlist-read-collaborative',
+      'user-read-playback-state',
+      'user-modify-playback-state',
+      'user-read-currently-playing',
+      'app-remote-control',
+      'streaming',
+      'user-read-email',
+      'user-read-private'
+    ];
     const state = Math.random().toString(36).substring(7);
     const authorizeURL = spotifyHandler.spotifyApi.createAuthorizeURL(scopes, state);
     
@@ -82,6 +93,9 @@ const callback: RequestHandler = async (req, res) => {
   try {
     const data = await spotifyHandler.spotifyApi.authorizationCodeGrant(code);
     spotifyHandler.spotifyApi.setAccessToken(data.body['access_token']);
+   console.log('access_token',data.body['access_token']);
+  
+
     spotifyHandler.spotifyApi.setRefreshToken(data.body['refresh_token']);
     spotifyHandler.setTokenExpirationTime(data.body['expires_in']);
 
@@ -144,16 +158,44 @@ const getPlaylistTracks: RequestHandler = async (req, res) => {
   }
 
   try {
+    // First verify the token is still valid
+    if (!spotifyHandler.hasValidToken()) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
     const tracks = await spotifyHandler.getTracksFromPlaylist(playlistUrl, count);
     res.json(tracks);
   } catch (error) {
     console.error('Error in /api/playlist-tracks:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch tracks',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    if (error instanceof Error && error.message.includes('authentication')) {
+      res.status(401).json({ 
+        error: 'Authentication failed',
+        message: error.message 
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Failed to fetch tracks',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 };
+
+// Add this near your other endpoints
+app.get('/get-token', (req, res) => {
+  try {
+    const accessToken = spotifyHandler.spotifyApi.getAccessToken();
+    if (!accessToken) {
+      res.status(401).json({ error: 'No access token available' });
+      return;
+    }
+    res.json({ accessToken });
+  } catch (error) {
+    console.error('Error getting token:', error);
+    res.status(500).json({ error: 'Failed to get access token' });
+  }
+});
 
 app.get('/', healthCheck);
 app.get('/login', login);
